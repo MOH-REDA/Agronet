@@ -1,0 +1,24 @@
+# Laravel Backend
+backend/vendor/
+backend/.env
+backend/storage/app/*
+backend/storage/framework/*
+backend/storage/logs/*
+backend/bootstrap/cache/*
+backend/public/storage
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# SonarQube
+sonar-project.properties

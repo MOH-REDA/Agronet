@@ -237,4 +237,41 @@ export const deleteUser = async (userId) => {
   }
 };
 
+// Notification endpoints
+export const getNotifications = async () => {
+  try {
+    const response = await api.get('/notifications');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const markNotificationRead = async (id) => {
+  try {
+    const response = await api.post(`/notifications/${id}/read`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const getAdminReservations = async () => {
+  try {
+    const response = await api.get('/admin/reservations');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+export const updateAdminReservationStatus = async (reservationId, status) => {
+  try {
+    const response = await api.patch(`/admin/reservations/${reservationId}/status`, { status });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 export default api; 

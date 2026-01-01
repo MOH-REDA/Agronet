@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/DashboardLayout/DashboardLayout';
 import { Link } from 'react-router-dom';
-import { getAdminDashboardData, promoteToAdmin, getAdminEquipment } from '../../services/api';
+import { getAdminDashboardData, promoteToAdmin, getAdminEquipment, getAdminReservations, updateAdminReservationStatus } from '../../services/api';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -16,10 +16,15 @@ const AdminDashboard = () => {
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [allReservations, setAllReservations] = useState([]);
+  const [reservationsLoading, setReservationsLoading] = useState(false);
+  const [reservationsError, setReservationsError] = useState(null);
+  const [statusUpdating, setStatusUpdating] = useState({});
 
   useEffect(() => {
     loadDashboardData();
     loadEquipment();
+    loadReservations();
   }, []);
 
   const loadDashboardData = async () => {
@@ -47,6 +52,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const loadReservations = async () => {
+    setReservationsLoading(true);
+    setReservationsError(null);
+    try {
+      const data = await getAdminReservations();
+      setAllReservations(data.data || data.reservations || data || []);
+    } catch (err) {
+      setReservationsError('Failed to load reservations.');
+    }
+    setReservationsLoading(false);
+  };
+
   const handlePromoteToAdmin = async (userId) => {
     try {
       await promoteToAdmin(userId);
@@ -56,6 +73,17 @@ const AdminDashboard = () => {
       alert('Failed to promote user. Please try again.');
       console.error('Promotion error:', err);
     }
+  };
+
+  const handleStatusChange = async (reservationId, newStatus) => {
+    setStatusUpdating(prev => ({ ...prev, [reservationId]: true }));
+    try {
+      await updateAdminReservationStatus(reservationId, newStatus);
+      setAllReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status: newStatus } : r));
+    } catch (err) {
+      alert('Failed to update status.');
+    }
+    setStatusUpdating(prev => ({ ...prev, [reservationId]: false }));
   };
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -204,51 +232,56 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+       
+
         <div className="section mt-4">
           <div className="section-header">
-            <h2 className="section-title">Recent Bookings</h2>
-            <Link to="/admin/bookings" className="btn btn-outline-success">
-              View All Bookings
-            </Link>
+            <h2 className="section-title">Recent bookings</h2>
           </div>
           <div className="section-content">
-            {recentBookings.length === 0 ? (
-              <p className="text-muted">No recent bookings to display.</p>
+            {reservationsLoading ? (
+              <div className="text-center p-4">
+                <div className="spinner-border text-success" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : reservationsError ? (
+              <div className="alert alert-danger" role="alert">{reservationsError}</div>
+            ) : allReservations.length === 0 ? (
+              <p className="text-muted">No reservations to display.</p>
             ) : (
               <div className="table-responsive">
                 <table className="table">
                   <thead>
                     <tr>
+                      <th>User</th>
                       <th>Equipment</th>
-                      <th>Renter</th>
-                      <th>Owner</th>
                       <th>Start Date</th>
                       <th>End Date</th>
                       <th>Status</th>
-                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {recentBookings.map(booking => (
-                      <tr key={booking.id}>
-                        <td>{booking.equipment_name}</td>
-                        <td>{booking.renter_name}</td>
-                        <td>{booking.owner_name}</td>
-                        <td>{new Date(booking.start_date).toLocaleDateString()}</td>
-                        <td>{new Date(booking.end_date).toLocaleDateString()}</td>
+                    {allReservations.map(res => (
+                      <tr key={res.id}>
+                        <td>{res.user_name || res.user?.name || '-'}</td>
+                        <td>{res.equipment_name || res.equipment?.name || '-'}</td>
+                        <td>{res.start_date ? new Date(res.start_date).toLocaleDateString() : '-'}</td>
+                        <td>{res.end_date ? new Date(res.end_date).toLocaleDateString() : '-'}</td>
                         <td>
-                          <span className={`badge ${
-                            booking.status === 'confirmed' ? 'bg-success' :
-                            booking.status === 'pending' ? 'bg-warning' :
-                            'bg-secondary'
-                          }`}>
-                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                          </span>
-                        </td>
-                        <td>
-                          <Link to={`/admin/bookings/${booking.id}`} className="btn btn-sm btn-outline-primary">
-                            View Details
-                          </Link>
+                          <select
+                            className={`form-select form-select-sm w-auto ${res.status === 'confirmed' ? 'text-success' : res.status === 'pending' ? 'text-warning' : 'text-secondary'}`}
+                            value={res.status}
+                            disabled={statusUpdating[res.id]}
+                            onChange={e => handleStatusChange(res.id, e.target.value)}
+                            style={{ minWidth: 110 }}
+                          >
+                            <option value="confirmed">Confirmed</option>
+                            <option value="pending">Pending</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                          {statusUpdating[res.id] && <span className="spinner-border spinner-border-sm ms-2" role="status" />}
                         </td>
                       </tr>
                     ))}

@@ -127,7 +127,7 @@ const UserDashboard = () => {
         <div className="section mt-4">
           <div className="section-header">
             <h2 className="section-title">Your Equipment</h2>
-            <Link to="/equipment/add" className="btn btn-success">
+            <Link to="/equipment/list" className="btn btn-success">
               Add New Equipment
             </Link>
           </div>
@@ -176,51 +176,7 @@ const UserDashboard = () => {
             )}
           </div>
         </div>
-        <div className="section">
-          <div className="section-header">
-            <h2 className="section-title">Upcoming Bookings</h2>
-            <Link to="/bookings" className="btn btn-outline-success">
-              View All Bookings
-            </Link>
-          </div>
-          <div className="section-content">
-            {upcomingBookings.length === 0 ? (
-              <div className="text-center p-4">
-                <p className="text-muted mb-3">No upcoming bookings</p>
-                <Link to="/equipment" className="btn btn-success">Browse Equipment</Link>
-              </div>
-            ) : (
-              <div className="table-responsive">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Equipment</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {upcomingBookings.map(booking => (
-                      <tr key={booking.id}>
-                        <td>{booking.equipment.name}</td>
-                        <td>{new Date(booking.start_date).toLocaleDateString()}</td>
-                        <td>{new Date(booking.end_date).toLocaleDateString()}</td>
-                        <td>
-                          <span className={`badge ${booking.status === 'confirmed' ? 'bg-success' : booking.status === 'pending' ? 'bg-warning' : 'bg-danger'}`}>{booking.status}</span>
-                        </td>
-                        <td>
-                          <Link to={`/bookings/${booking.id}`} className="btn btn-sm btn-outline-primary">View Details</Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
+        
       </div>
     </DashboardLayout>
   );

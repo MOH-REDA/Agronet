@@ -16,34 +16,54 @@ class EquipmentController extends Controller
     {
         $query = Equipment::query();
         // Filtering
-        if ($type = $request->query('type')) {
-            $query->where('type', $type);
-        }
-        if ($priceRange = $request->query('priceRange')) {
-            if ($priceRange === 'under-300') {
-                $query->where('daily_rate', '<', 300);
-            } elseif ($priceRange === '300-350') {
-                $query->whereBetween('daily_rate', [300, 350]);
-            } elseif ($priceRange === 'over-350') {
-                $query->where('daily_rate', '>', 350);
+        if ($types = $request->query('type')) {
+            // Accepts type as array or comma-separated string
+            if (is_array($types)) {
+                $query->whereIn('type', $types);
+            } else {
+                // Split comma-separated string into array
+                $typesArr = array_map('trim', explode(',', $types));
+                $query->whereIn('type', $typesArr);
             }
         }
-        if ($availability = $request->query('availability')) {
-            if ($availability === 'now') {
-                $query->where('status', 'active');
-            } elseif ($availability === 'next-week') {
-                $query->where(function($q) {
-                    $q->whereNull('id'); // Placeholder: implement logic for next-week availability
-                });
-            } elseif ($availability === 'next-month') {
-                $query->where(function($q) {
-                    $q->whereNull('id'); // Placeholder: implement logic for next-month availability
-                });
-            }
+        if ($request->has('min_price')) {
+            $query->where('daily_rate', '>=', $request->query('min_price'));
         }
+        if ($request->has('max_price')) {
+            $query->where('daily_rate', '<=', $request->query('max_price'));
+        }
+        if ($city = $request->query('city')) {
+            $query->where('city', 'like', "%$city%");
+        }
+        // Date availability filter
+        if ($request->has(['start_date', 'end_date'])) {
+            $start = $request->query('start_date');
+            $end = $request->query('end_date');
+            $query->whereDoesntHave('reservations', function($q) use ($start, $end) {
+                $q->whereIn('status', ['pending', 'reserved', 'paid', 'active'])
+                  ->where(function($q2) use ($start, $end) {
+                      $q2->whereBetween('start_date', [$start, $end])
+                         ->orWhereBetween('end_date', [$start, $end])
+                         ->orWhere(function($q3) use ($start, $end) {
+                             $q3->where('start_date', '<=', $start)
+                                ->where('end_date', '>=', $end);
+                         });
+                  });
+            });
+        }
+        // Sorting
         if ($sortBy = $request->query('sortBy')) {
-            if ($sortBy === 'price-low') $query->orderBy('daily_rate', 'asc');
-            elseif ($sortBy === 'price-high') $query->orderBy('daily_rate', 'desc');
+            if ($sortBy === 'price-low') {
+                $query->orderBy('daily_rate', 'asc');
+            } elseif ($sortBy === 'price-high') {
+                $query->orderBy('daily_rate', 'desc');
+            } elseif ($sortBy === 'recommended') {
+                // Placeholder: implement recommended logic as needed
+                $query->orderBy('id', 'desc');
+            } elseif ($sortBy === 'distance') {
+                // Placeholder: implement distance sorting if location/lat/lng is available
+                // $query->orderBy('distance', 'asc');
+            }
         } else {
             $query->orderBy('id', 'desc');
         }
@@ -228,13 +248,20 @@ class EquipmentController extends Controller
         if ($isOwner) {
             $reservations = $equipment->reservations()->orderBy('start_date', 'desc')->get();
         }
+        // Reserved date ranges for this equipment
+        $reserved_dates = $equipment->reservations()
+            ->whereIn('status', ['pending', 'reserved', 'paid', 'active'])
+            ->get(['start_date', 'end_date'])
+            ->map(function($r) {
+                return [
+                    'start' => $r->start_date,
+                    'end' => $r->end_date
+                ];
+            })->toArray();
         // Normalize image paths
         $images = collect($equipment->images ?? [])->map(function($img) {
-            // Remove leading slash if present
             $img = ltrim($img, '/');
-            // Ensure it starts with storage/equipment/
             if (!str_starts_with($img, 'storage/equipment/')) {
-                // If it already contains 'equipment/', just prepend 'storage/'
                 if (str_starts_with($img, 'equipment/')) {
                     $img = 'storage/' . $img;
                 } else {
@@ -245,6 +272,26 @@ class EquipmentController extends Controller
         })->toArray();
         $equipmentArr = $equipment->toArray();
         $equipmentArr['images'] = $images;
+        $equipmentArr['reserved_dates'] = $reserved_dates;
+        // Compose summary fields for reservation/order
+        $summary = [
+            'id' => $equipment->id,
+            'name' => $equipment->name,
+            'subtitle' => $equipment->subtitle ?? $equipment->type,
+            'type' => $equipment->type,
+            'features' => [
+                'hp' => $equipment->hp,
+                'gps_ready' => $equipment->gps_ready,
+            ],
+            'city' => $equipment->city,
+            'state' => $equipment->state,
+            'minPrice' => $equipment->minPrice,
+            'price' => $equipment->price,
+            'image' => isset($images[0]) ? $images[0] : null,
+            // Add service_fee if you have a fee calculation, e.g.:
+            // 'service_fee' => $equipment->price ? round($equipment->price * 0.05, 2) : null,
+        ];
+        $equipmentArr['order_summary'] = $summary;
         return response()->json([
             'equipment' => $equipmentArr,
             'isOwner' => $isOwner,
@@ -302,5 +349,27 @@ class EquipmentController extends Controller
             return $item;
         });
         return response()->json(['data' => $equipment]);
+    }
+
+    // GET /api/equipment/{id}/availability?start=YYYY-MM-DD&end=YYYY-MM-DD
+    public function availability(Request $request, $id)
+    {
+        $equipment = Equipment::findOrFail($id);
+        $start = $request->query('start');
+        $end = $request->query('end');
+        if (!$start || !$end) {
+            return response()->json(['error' => 'Start and end dates are required.'], 422);
+        }
+        $overlap = $equipment->reservations()
+            ->whereIn('status', ['pending', 'reserved', 'paid', 'active'])
+            ->where(function($q) use ($start, $end) {
+                $q->whereBetween('start_date', [$start, $end])
+                  ->orWhereBetween('end_date', [$start, $end])
+                  ->orWhere(function($q2) use ($start, $end) {
+                      $q2->where('start_date', '<=', $start)
+                         ->where('end_date', '>=', $end);
+                  });
+            })->exists();
+        return response()->json(['available' => !$overlap]);
     }
 }

@@ -14,14 +14,11 @@ const Equipment = () => {
   const [error, setError] = useState(null);
   const [equipment, setEquipment] = useState([]);
   const [equipmentTypes, setEquipmentTypes] = useState([]);
+  const [filteredEquipment, setFilteredEquipment] = useState([]);
   
   // Filter states
-  const [selectedType, setSelectedType] = useState('');
-  const [priceRange, setPriceRange] = useState('');
-  const [availability, setAvailability] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [sortBy, setSortBy] = useState('recommended');
-
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showModal, setShowModal] = useState(false);
@@ -71,8 +68,12 @@ const Equipment = () => {
           getAllEquipment()
         ]);
 
+        console.log('Equipment Types:', typesResponse.data);
+        console.log('Equipment Data:', equipmentResponse.data);
+
         setEquipmentTypes(typesResponse.data || []);
         setEquipment(equipmentResponse.data || []);
+        setFilteredEquipment(equipmentResponse.data || []);
         setError(null);
       } catch (err) {
         setError(err.message || 'Failed to load equipment data');
@@ -85,37 +86,81 @@ const Equipment = () => {
     fetchInitialData();
   }, []);
 
-  // Fetch equipment when filters change
-  useEffect(() => {
-    const fetchFilteredEquipment = async () => {
-      try {
-        setLoading(true);
-        const response = await getAllEquipment({
-          type: selectedType,
-          priceRange,
-          availability,
-          sortBy
+  // Handle filter changes from EquipmentSidebarFilter
+  const handleFilter = (filterParams) => {
+    console.log('Filter Params:', filterParams);
+    let filtered = [...equipment];
+
+    // Filter by type
+    if (filterParams.types && filterParams.types.length > 0) {
+      console.log('Filtering by types:', filterParams.types);
+      filtered = filtered.filter(item => {
+        console.log('Item type:', item.type);
+        const matches = filterParams.types.some(type => {
+          // Remove 's' from the end of the type for comparison
+          const normalizedType = type.toLowerCase().replace(/s$/, '');
+          const normalizedItemType = item.type?.toLowerCase().replace(/s$/, '');
+          return normalizedItemType === normalizedType;
         });
-        
-        setEquipment(response.data || []);
-        setError(null);
-      } catch (err) {
-        setError(err.message || 'Failed to filter equipment');
-        toast.error(err.message || 'Failed to filter equipment');
-      } finally {
-        setLoading(false);
-      }
-    };
+        console.log('Matches:', matches);
+        return matches;
+      });
+    }
 
-    fetchFilteredEquipment();
-  }, [selectedType, priceRange, availability, sortBy]);
+    // Filter by price range
+    if (filterParams.priceRange && filterParams.priceRange.length === 2) {
+      const [minPrice, maxPrice] = filterParams.priceRange;
+      filtered = filtered.filter(item => {
+        const price = item.price || item.minPrice;
+        return price >= minPrice && price <= maxPrice;
+      });
+    }
 
-  // Clear all filters
-  const clearFilters = () => {
-    setSelectedType('');
-    setPriceRange('');
-    setAvailability('');
-    setSortBy('recommended');
+    // Filter by location
+    if (filterParams.location) {
+      filtered = filtered.filter(item => 
+        item.city?.toLowerCase() === filterParams.location.toLowerCase()
+      );
+    }
+
+    // Filter by date availability
+    if (filterParams.startDate && filterParams.endDate) {
+      const start = new Date(filterParams.startDate);
+      const end = new Date(filterParams.endDate);
+      
+      filtered = filtered.filter(item => {
+        // Check if the equipment has any reservations that overlap with the selected dates
+        const hasOverlappingReservation = item.reservations?.some(reservation => {
+          const reservationStart = new Date(reservation.start_date);
+          const reservationEnd = new Date(reservation.end_date);
+          
+          // Check if the selected date range overlaps with any reservation
+          return (
+            (start <= reservationEnd && end >= reservationStart) || // Overlap
+            (start >= reservationStart && start <= reservationEnd) || // Start date falls within reservation
+            (end >= reservationStart && end <= reservationEnd) // End date falls within reservation
+          );
+        });
+
+        // If there's no overlapping reservation, the equipment is available
+        return !hasOverlappingReservation;
+      });
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'price-low':
+        filtered.sort((a, b) => (a.price || a.minPrice) - (b.price || b.minPrice));
+        break;
+      case 'price-high':
+        filtered.sort((a, b) => (b.price || b.minPrice) - (a.price || a.minPrice));
+        break;
+      // Add more sorting options as needed
+    }
+
+    console.log('Filtered Results:', filtered);
+    setFilteredEquipment(filtered);
+    setCurrentPage(1);
   };
 
   // Handle equipment reservation
@@ -150,14 +195,16 @@ const Equipment = () => {
   // Tag generator for each equipment card
   const getTags = (item) => {
     const tags = [];
-    if (item.status === 'active') tags.push('Available Now');
     if (item.gps_ready) tags.push('GPS Ready');
     if (item.hp) tags.push(`${item.hp} HP`);
     return tags;
   };
 
-  const paginatedEquipment = equipment.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const totalPages = Math.ceil(equipment.length / ITEMS_PER_PAGE);
+  const paginatedEquipment = filteredEquipment.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+  const totalPages = Math.ceil(filteredEquipment.length / ITEMS_PER_PAGE);
 
   // Reservation modal logic
   const openReserveModal = (equipment) => {
@@ -200,19 +247,16 @@ const Equipment = () => {
     }
   };
 
-  // Add a handler for the sidebar filter
-  const handleSidebarFilter = ({ startDate, endDate, types, priceRange, location }) => {
-    setSelectedType(types && types.length > 0 ? types.join(',') : '');
-    setPriceRange(
-      priceRange && priceRange.length === 2
-        ? priceRange[0] === 50 && priceRange[1] === 5000
-          ? ''
-          : `${priceRange[0]}-${priceRange[1]}`
-        : ''
-    );
-    // You may want to add logic for startDate, endDate, and location as needed
-    // For now, just update the states
-    // setStartDate(startDate); setEndDate(endDate); setLocation(location);
+  // Clear all filters
+  const clearFilters = () => {
+    setFilteredEquipment(equipment);
+    setSortBy('recommended');
+    setCurrentPage(1);
+    // Reset the sidebar filter component
+    if (document.querySelector('.equipment-sidebar-filter')) {
+      const resetEvent = new CustomEvent('resetFilters');
+      document.querySelector('.equipment-sidebar-filter').dispatchEvent(resetEvent);
+    }
   };
 
   if (loading && !equipment.length) {
@@ -236,50 +280,49 @@ const Equipment = () => {
   }
 
   return (
-    <div
-      className="equipment-page"
-      style={{
-        display: isMobile ? 'block' : 'flex',
-        alignItems: 'flex-start',
-        background: '#f5f6fa',
-        padding: isMobile ? '16px 0' : '32px 0',
-        minHeight: '100vh',
-      }}
-    >
-      <Paper
-        elevation={2}
-        style={{
-          minWidth: isMobile ? '100%' : 260,
-          maxWidth: isMobile ? '100%' : 280,
-          margin: isMobile ? '0 0 24px 0' : '0 0 0 32px',
-          padding: 24,
-          borderRadius: 12,
-          boxSizing: 'border-box',
-          position: isMobile ? 'static' : 'sticky',
-          top: 32,
-          zIndex: 2,
-        }}
-      >
-        <EquipmentSidebarFilter onFilter={handleSidebarFilter} equipmentTypes={equipmentTypes} />
-      </Paper>
-      <div
-        className="main-content"
-        style={{
-          flex: 1,
-          marginLeft: isMobile ? 0 : 24,
-          paddingRight: isMobile ? 0 : 24,
-          width: '100%',
-          boxSizing: 'border-box',
-        }}
-      >
-        <div className="content-header" style={{ marginBottom: 24 }}>
+    <div className="equipment-page">
+      <div className="filters-sidebar">
+        <EquipmentSidebarFilter 
+          onFilter={handleFilter} 
+          equipmentTypes={equipmentTypes}
+          className="equipment-sidebar-filter"
+        />
+      </div>
+      <div className="main-content">
+        <div className="content-header">
           <div className="header-left">
             <h2>Browse Equipment</h2>
             <p className="results-count">
-              Showing {equipment.length} items available near you
+              Showing {filteredEquipment.length} items available near you
             </p>
           </div>
           <div className="header-right">
+            <button
+              className="clear-filters-btn"
+              onClick={clearFilters}
+              style={{
+                marginRight: '1rem',
+                padding: '0.5rem 1rem',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #2B5727',
+                color: '#2B5727',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '14px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#eaf6ea';
+                e.target.style.borderColor = '#1e3d1c';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#f8fafc';
+                e.target.style.borderColor = '#2B5727';
+              }}
+            >
+              Clear All Filters
+            </button>
             <select
               className="sort-dropdown"
               value={sortBy}
@@ -306,36 +349,11 @@ const Equipment = () => {
             </div>
           </div>
         </div>
-        <div
-          className={`equipment-grid ${viewMode}`}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile
-              ? '1fr'
-              : viewMode === 'grid'
-              ? 'repeat(auto-fill, minmax(320px, 1fr))'
-              : '1fr',
-            gap: 24,
-            marginBottom: 32,
-            width: '100%',
-          }}
-        >
+        <div className={`equipment-grid ${viewMode}`}>
           {paginatedEquipment.map((item) => (
             <div
               key={item.id}
               className="equipment-card"
-              style={{
-                cursor: 'pointer',
-                minWidth: 0,
-                background: '#fff',
-                border: '1px solid #e0e0e0',
-                borderRadius: 12,
-                boxShadow: '0 2px 12px rgba(44,62,80,0.06)',
-                transition: 'box-shadow 0.2s',
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-              }}
               onClick={e => {
                 if (e.target.closest('.reserve-btn')) return;
                 navigate(`/equipment/${item.id}`);
@@ -345,52 +363,30 @@ const Equipment = () => {
                 src={getImageUrl(item)}
                 alt={item.name}
                 className="equipment-image"
-                style={{
-                  width: '100%',
-                  height: 200,
-                  objectFit: 'cover',
-                  borderTopLeftRadius: 12,
-                  borderTopRightRadius: 12,
-                  background: '#f3f7f3',
-                }}
               />
-              <div className="card-content" style={{ padding: 18, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: '#2B5727' }}>{item.name}</h3>
-                <p className="subtitle" style={{ fontSize: 14, color: '#666', margin: '6px 0 12px 0' }}>{item.subtitle || 'Premium Row Crop Tractor'}</p>
-                <div className="price" style={{ fontSize: 20, fontWeight: 700, color: '#333', marginBottom: 10 }}>
-                  {item.minPrice ? `${item.minPrice} MAD` : (item.price ? `${item.price} MAD` : 'MAD')}
-                  <span style={{ fontSize: 14, fontWeight: 400, color: '#666', marginLeft: 4 }}>per day</span>
+              <div className="card-content">
+                <div className="equipment-title-row" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 className="title" style={{ margin: 0 }}>{item.name}</h3>
+                  {item.type && <span className="equipment-type">{item.type}</span>}
                 </div>
-                <div className="tags-row" style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <p className="subtitle">{item.description || ''}</p>
+                <div className="price" style={{ marginTop: '12px' }}>
+                  {item.minPrice ? `${item.minPrice} MAD` : (item.price ? `${item.price} MAD` : 'MAD')} <span style={{ fontWeight: 400, marginLeft: 4 }}>per day</span>
+                </div>
+                <div className="tags-row">
                   {getTags(item).map((tag, idx) => (
-                    <span key={idx} className="tag" style={{ background: '#f3f7f3', color: '#2B5727', fontSize: 12, fontWeight: 500, borderRadius: 12, padding: '3px 12px', border: '1px solid #e0e6e0', display: 'inline-block' }}>{tag}</span>
+                    <span key={idx} className="tag">{tag}</span>
                   ))}
                 </div>
-                <div className="status-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <span className="available" style={{ color: '#2B5727', fontSize: 14, fontWeight: 500 }}>
-                    {(item.status === 'published' || item.status === 'active') ? 'Available Now' : 'Not Available'}
-                  </span>
-                  <span className="location" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#666', fontSize: 14 }}>
-                    <span className="location-dot" style={{ color: '#2B5727', fontSize: 16, marginRight: 4 }}>📍</span>
-                    {item.distance ? `${item.distance} miles` : 'GPS Ready'}
+                <div className="status-row">
+                  <span className="location">
+                    <span className="location-dot">📍</span>
+                    {item.city || item.state || item.address || '-'}
                   </span>
                 </div>
                 <button
-                  className="btn btn-success w-100 mt-2 reserve-btn"
+                  className="reserve-btn w-100 mt-2"
                   disabled={item.status !== 'active'}
-                  style={{
-                    marginTop: 'auto',
-                    width: '100%',
-                    padding: '12px',
-                    background: '#2B5727',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: item.status === 'active' ? 'pointer' : 'not-allowed',
-                    transition: 'background 0.2s',
-                  }}
                   onClick={() => openReserveModal(item)}
                 >
                   Reserve Now
@@ -402,30 +398,28 @@ const Equipment = () => {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'center', margin: '24px 0' }}>
+          <div className="pagination-controls">
             <button
               className="btn btn-outline-secondary"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              style={{ marginRight: 8 }}
             >
               Previous
             </button>
-            <span style={{ alignSelf: 'center', fontWeight: 500 }}>
+            <span>
               Page {currentPage} of {totalPages}
             </span>
             <button
               className="btn btn-outline-secondary"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              style={{ marginLeft: 8 }}
             >
               Next
             </button>
           </div>
         )}
 
-        {equipment.length === 0 && !loading && (
+        {filteredEquipment.length === 0 && !loading && (
           <div className="no-results">
             <p>No equipment found matching your filters</p>
             <button onClick={clearFilters} className="clear-filters-btn">

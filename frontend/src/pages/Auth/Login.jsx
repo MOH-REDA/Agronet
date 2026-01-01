@@ -40,7 +40,7 @@ const Login = () => {
       <div className="auth-card">
         <div className="auth-header">
           <h2>Welcome Back</h2>
-          <p className="text-muted">Sign in to continue to AgriConnect</p>
+          <p className="text-muted">Sign in to continue to Agronet</p>
         </div>
 
         {error && (

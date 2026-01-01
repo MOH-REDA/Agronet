@@ -63,9 +63,9 @@ const HowItWorks = () => {
         <Container>
           <div className="text-center">
             <h1>Rent. Use. Return. It's<br />That Simple.</h1>
-            <p>AgriConnect makes farming more efficient by helping you access and<br />rent agricultural equipment anytime, anywhere.</p>
+            <p>Agronet makes farming more efficient by helping you access and<br />rent agricultural equipment anytime, anywhere.</p>
             <Link to="/register" className="btn btn-light">
-              Get Started with AgriConnect
+              Get Started with Agronet
             </Link>
           </div>
         </Container>
@@ -74,7 +74,7 @@ const HowItWorks = () => {
       <section className="process-section">
         <Container>
           <div className="section-header text-center">
-            <h2>How AgriConnect Works</h2>
+            <h2>How Agronet Works</h2>
             <p>Follow these simple steps to start renting or listing<br />agricultural equipment in your community</p>
           </div>
           <Row className="process-steps">
@@ -97,7 +97,7 @@ const HowItWorks = () => {
       <section className="benefits-section">
         <Container>
           <div className="section-header text-center">
-            <h2>Why Choose AgriConnect?</h2>
+            <h2>Why Choose Agronet?</h2>
             <p>Join thousands of farmers who are already saving time and money<br />with our platform</p>
           </div>
           <Row className="benefits">

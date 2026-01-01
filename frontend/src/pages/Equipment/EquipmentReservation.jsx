@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import './Equipment.css';
+import dayjs from 'dayjs';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 const BASE_URL = 'http://localhost:8000';
 
@@ -9,8 +12,8 @@ const EquipmentReservation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [equipment, setEquipment] = useState(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
   useEffect(() => {
     api.get(`/equipment/${id}`)
@@ -43,6 +46,30 @@ const EquipmentReservation = () => {
     total = duration * parseFloat(equipment.minPrice);
   }
 
+  const isDateReserved = (date) => {
+    if (!equipment || !equipment.reserved_dates) return false;
+    return equipment.reserved_dates.some(range => {
+      const start = dayjs(range.start);
+      const end = dayjs(range.end);
+      return dayjs(date).isBetween(start, end, null, '[]');
+    });
+  };
+
+  const isRangeReserved = (start, end) => {
+    if (!equipment || !equipment.reserved_dates) return false;
+    return equipment.reserved_dates.some(range => {
+      const reservedStart = dayjs(range.start);
+      const reservedEnd = dayjs(range.end);
+      return (
+        (dayjs(start).isBetween(reservedStart, reservedEnd, null, '[]')) ||
+        (dayjs(end).isBetween(reservedStart, reservedEnd, null, '[]')) ||
+        (reservedStart.isBetween(dayjs(start), dayjs(end), null, '[]'))
+      );
+    });
+  };
+
+  const showRangeError = startDate && endDate && isRangeReserved(startDate, endDate);
+
   return (
     <div className="reservation-page">
       <div className="reservation-content">
@@ -50,24 +77,121 @@ const EquipmentReservation = () => {
         <div className="reservation-card booking-details-card">
           <div className="reservation-title">Booking Details</div>
           <div className="reservation-label">Select Rental Period</div>
-          <div className="reservation-date-fields">
-            <div>
-              <label>Start Date</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <div
+              className="reservation-date-fields"
+              style={{
+                display: 'flex',
+                gap: 12,
+                alignItems: 'flex-end',
+                marginBottom: 18,
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 0,
+                boxShadow: 'none',
+                padding: 0,
+                width: '100%',
+                position: 'relative',
+                overflow: 'visible',
+                marginLeft: 0,
+                marginRight: 0,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: 4,
+                    fontWeight: 600,
+                    color: '#2B5727',
+                    fontSize: 15,
+                  }}
+                >
+                  Start Date
+                </label>
+                <DatePicker
+                  label=""
+                  value={startDate}
+                  onChange={setStartDate}
+                  minDate={dayjs()}
+                  shouldDisableDate={isDateReserved}
+                  slotProps={{
+                    day: ({ day }) =>
+                      isDateReserved(day)
+                        ? { sx: { bgcolor: '#ffeaea', color: '#e74c3c' } }
+                        : {},
+                    popper: {
+                      placement: 'bottom-start',
+                      sx: {
+                        zIndex: 1500,
+                        maxWidth: '95vw',
+                        width: 'auto',
+                        boxSizing: 'border-box',
+                      },
+                    },
+                  }}
+                  sx={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    borderRadius: 2,
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: 4,
+                    fontWeight: 600,
+                    color: '#2B5727',
+                    fontSize: 15,
+                  }}
+                >
+                  End Date
+                </label>
+                <DatePicker
+                  label=""
+                  value={endDate}
+                  onChange={setEndDate}
+                  minDate={startDate || dayjs()}
+                  shouldDisableDate={isDateReserved}
+                  slotProps={{
+                    day: ({ day }) =>
+                      isDateReserved(day)
+                        ? { sx: { bgcolor: '#ffeaea', color: '#e74c3c' } }
+                        : {},
+                    popper: {
+                      placement: 'bottom-start',
+                      sx: {
+                        zIndex: 1500,
+                        maxWidth: '95vw',
+                        width: 'auto',
+                        boxSizing: 'border-box',
+                      },
+                    },
+                  }}
+                  sx={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    borderRadius: 2,
+                  }}
+                />
+              </div>
             </div>
-            <div>
-              <label>End Date</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </LocalizationProvider>
+          {showRangeError && (
+            <div style={{ color: '#e74c3c', marginTop: 8 }}>
+              The selected dates overlap with an existing reservation. Please choose different dates.
             </div>
-          </div>
+          )}
           <div className="reservation-stepper">
             <div className="step-circle active">1</div>
             <span className="step-label">of 3</span>
           </div>
           <button
             className="reservation-next-btn"
-            disabled={!startDate || !endDate}
-            onClick={() => navigate(`/equipment/${id}/reserve/details`, { state: { startDate, endDate } })}
+            disabled={!startDate || !endDate || showRangeError}
+            onClick={() => navigate(`/equipment/${id}/reserve/details`, { state: { startDate: startDate ? startDate.format('YYYY-MM-DD') : '', endDate: endDate ? endDate.format('YYYY-MM-DD') : '', equipment } })}
           >
             Next
           </button>

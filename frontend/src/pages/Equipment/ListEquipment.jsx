@@ -414,7 +414,7 @@ const ListEquipment = () => {
                   checked={!!form.termsAccepted}
                   onChange={() => setForm(f => ({ ...f, termsAccepted: true }))}
                 />
-                I accept the terms and conditions for renting equipment on AgriConnect.
+                I accept the terms and conditions for renting equipment on Agronet.
               </label>
               <label className="radio-label">
                 <input
@@ -501,19 +501,19 @@ const ListEquipment = () => {
               </label>
             </div>
             {form.pricingType !== 'manual' ? (
-              <div className="smart-pricing-box">
-                <img src="/smart-pricing-graph.png" alt="Smart Pricing" style={{width:'100%',maxWidth:340,margin:'0 auto',display:'block'}} />
-                <div className="smart-pricing-desc">Our algorithm will optimize your price based on demand, seasonality, and market data. You can adjust your minimum price below.</div>
-                <div className="form-group" style={{maxWidth:200,margin:'0 auto'}}>
-                  <label>Minimum Daily Price (MAD)</label>
-                  <div className="min-price-row">
-                    <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,minPrice:Math.max(0,(parseInt(f.minPrice)||0)-1)}))}>-</button>
-                    <input name="minPrice" type="number" min="0" value={form.minPrice||''} onChange={e=>setForm(f=>({...f,minPrice:e.target.value}))} style={{width:60,textAlign:'center'}} />
-                    <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,minPrice:(parseInt(f.minPrice)||0)+1}))}>+</button>
-                    <span style={{marginLeft:8}}>MAD</span>
+              <div className="smart-pricing-box smart-pricing-vertical">
+                <div className="smart-pricing-form-col" style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                  <div className="form-group" style={{maxWidth:200, margin:'0 auto'}}>
+                    <label style={{textAlign: 'center', display: 'block'}}>Minimum Daily Price (MAD)</label>
+                    <div className="min-price-row" style={{justifyContent: 'center'}}>
+                      <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,minPrice:Math.max(0,(parseInt(f.minPrice)||0)-1)}))}>-</button>
+                      <input name="minPrice" type="number" min="0" value={form.minPrice||''} onChange={e=>setForm(f=>({...f,minPrice:e.target.value}))} style={{width:60,textAlign:'center'}} />
+                      <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,minPrice:(parseInt(f.minPrice)||0)+1}))}>+</button>
+                      <span style={{marginLeft:8}}>MAD</span>
+                    </div>
                   </div>
+                  <div className="info-box" style={{marginTop: '12px'}}>You can change your minimum price at any time.</div>
                 </div>
-                <div className="info-box">You can change your minimum price at any time.</div>
               </div>
             ) : (
               <div className="manual-pricing-box">

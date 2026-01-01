@@ -51,7 +51,7 @@ const Contact = () => {
             <Mail className="contact-icon" />
             <h3>Email Us</h3>
             <p>Get a response within 24 hours</p>
-            <a href="mailto:support@agriconnect.com">support@agriconnect.com</a>
+            <a href="mailto:support@agronet.com">support@agronet.com</a>
           </div>
 
           <div className="contact-card">

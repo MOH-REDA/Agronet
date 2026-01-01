@@ -6,24 +6,37 @@ const EquipmentReservationDetails = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { startDate, endDate } = location.state || {};
+  const { startDate, endDate, equipment: navEquipment } = location.state || {};
 
-  // Example values, replace with real data as needed
-  const equipment = {
-    name: 'John Deere 8R Tractor',
-    subtitle: 'Premium Row Crop Tractor',
-    image: '',
-    location: 'Kansas City, MO',
-    dailyRate: 350,
-    serviceFee: 87.5,
-    features: ['380 HP', 'GPS Ready'],
-  };
+  // Use real equipment data from navigation state, fallback to empty object
+  const equipment = navEquipment || {};
   const duration = startDate && endDate ? Math.max(0, (new Date(endDate) - new Date(startDate)) / (1000*60*60*24)) : 0;
-  const total = duration * equipment.dailyRate + equipment.serviceFee;
+  const dailyRate = equipment.minPrice || equipment.price || 0;
+  const serviceFee = equipment.serviceFee || 0; // fallback if not present
+  const total = duration * dailyRate + serviceFee;
 
   const [insurance, setInsurance] = useState('basic');
   const [notes, setNotes] = useState('');
   const [depositChecked, setDepositChecked] = useState(false);
+
+  // Helper to get image URL like in Equipment.jsx and EquipmentDetails.jsx
+  const getImageUrl = (item) => {
+    if (item.images && item.images.length > 0) {
+      let imgPath = item.images[0];
+      if (typeof imgPath === 'string') {
+        imgPath = imgPath.replace(/\\/g, '/').trim();
+        imgPath = imgPath.replace(/^\/+/, '');
+        if (imgPath.startsWith('storage/')) {
+          imgPath = imgPath.substring('storage/'.length);
+        }
+        if (!imgPath.startsWith('equipment/')) {
+          imgPath = 'equipment/' + imgPath;
+        }
+        return 'http://localhost:8000/storage/' + imgPath;
+      }
+    }
+    return '/tractor-placeholder.png';
+  };
 
   return (
     <div className="reservation-page">
@@ -32,20 +45,20 @@ const EquipmentReservationDetails = () => {
         <div className="details-left">
           <div className="reservation-card rental-summary-card">
             <div className="equipment-summary-row">
-              <img src={equipment.image || '/tractor-placeholder.png'} alt={equipment.name} className="equipment-image-sm" />
+              <img src={getImageUrl(equipment)} alt={equipment.name || ''} className="equipment-image-sm" />
               <div>
                 <div className="equipment-title">{equipment.name}</div>
-                <div className="equipment-subtitle">{equipment.subtitle}</div>
+                <div className="equipment-subtitle">{equipment.subtitle || ''}</div>
                 <div className="equipment-features-list">
-                  {equipment.features.map(f => <span key={f} className="equipment-feature-badge">{f}</span>)}
+                  {(equipment.features || []).map(f => <span key={f} className="equipment-feature-badge">{f}</span>)}
                 </div>
               </div>
             </div>
             <div className="rental-summary-info">
               <div>Rental Period: <b>{startDate}</b> - <b>{endDate}</b> ({duration} days)</div>
-              <div>Pickup Location: {equipment.location}</div>
-              <div>Daily Rate: ${equipment.dailyRate} × {duration} days</div>
-              <div>Service Fee: ${equipment.serviceFee}</div>
+              <div>Pickup Location: {equipment.city || equipment.location || ''}</div>
+              <div>Daily Rate: ${dailyRate} × {duration} days</div>
+              <div>Service Fee: ${serviceFee}</div>
               <div className="rental-summary-total">Total: <b>${total.toFixed(2)}</b></div>
             </div>
           </div>
@@ -88,7 +101,7 @@ const EquipmentReservationDetails = () => {
             <button
               className="reservation-next-btn"
               disabled={!depositChecked}
-              onClick={() => navigate(`/equipment/${id}/reserve/confirm`, { state: { startDate, endDate, insurance, notes, deposit: 1000 } })}
+              onClick={() => navigate(`/equipment/${id}/reserve/confirm`, { state: { startDate, endDate, insurance, notes, deposit: 1000, equipment } })}
             >
               Continue to Payment
             </button>

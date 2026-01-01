@@ -29,7 +29,7 @@ const About = () => {
               Empowering Agriculture.<br />
               Farmers Working Together
             </h1>
-            <p>AgriConnect — making agricultural resources accessible, and farming collaborative.</p>
+            <p>Agronet — making agricultural resources accessible, and farming collaborative.</p>
             <Link to="/how-it-works" className="btn btn-light">
               Learn More & Mission
             </Link>
@@ -44,7 +44,7 @@ const About = () => {
               <div className="journey-content">
                 <h2>Our Journey</h2>
                 <p>
-                  AgriConnect was born out of a simple idea: make advanced farming tools accessible to every farmer, regardless of budget or land size. We saw how cooperative mindsets often led people to support each other in rural communities.
+                  Agronet was born out of a simple idea: make advanced farming tools accessible to every farmer, regardless of budget or land size. We saw how cooperative mindsets often led people to support each other in rural communities.
                 </p>
                 <p>
                   Today, we're building bridges between farmers, encouraging them through cooperation. Every rental creates a win-win situation that strengthens our agricultural community.

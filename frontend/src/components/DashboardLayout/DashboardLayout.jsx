@@ -18,7 +18,7 @@ const DashboardLayout = ({ children }) => {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo-text">AC</div>
-          <h3>AgriConnect</h3>
+          <h3>Agronet</h3>
         </div>
         
         <nav className="sidebar-nav">
@@ -67,15 +67,12 @@ const DashboardLayout = ({ children }) => {
         </div>
       </aside>
 
-      <main className="main-content">
+      <main className="main-fontent">
         <header className="dashboard-header">
           <div className="header-content">
             <h1>{window.location.pathname.split('/').pop().charAt(0).toUpperCase() + window.location.pathname.split('/').pop().slice(1)}</h1>
             <div className="header-actions">
-              <button className="notifications-btn">
-                <i className="fas fa-bell"></i>
-                <span className="notification-badge">3</span>
-              </button>
+              
               <div className="user-header-info">
                 <span className="user-name-header">{user.name}</span>
                 <button onClick={handleLogout} className="logout-btn">

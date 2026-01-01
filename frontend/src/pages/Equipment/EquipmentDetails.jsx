@@ -2,8 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import './Equipment.css';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 const BASE_URL = 'http://localhost:8000/api'; // Updated to match API URL
+
+// Fix default marker icon for leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 const EquipmentDetails = () => {
   const { id } = useParams();
@@ -34,6 +48,26 @@ const EquipmentDetails = () => {
     imageUrl = 'http://localhost:8000/storage/' + imgPath;
   }
 
+  // Helper to mask contact phone
+  const maskPhone = (phone) => {
+    if (!phone) return 'N/A';
+    return phone.replace(/.(?=.{4})/g, '*');
+  };
+  // Helper to shorten location
+  const getShortLocation = (eq) => {
+    let loc = eq.address || '';
+    if (eq.city) loc = loc ? `${loc}, ${eq.city}` : eq.city;
+    if (eq.state) loc = loc ? `${loc}, ${eq.state}` : eq.state;
+    return loc;
+  };
+  // Helper for license
+  const getLicenseStatus = (license) => license && license.length > 3 ? 'Yes' : 'No';
+  // Helper for description
+  const getDescription = (desc) => {
+    if (!desc || desc.length < 5 || /[a-zA-Z]/.test(desc) === false) return <span style={{ color: '#aaa' }}>No description</span>;
+    return desc;
+  };
+
   return (
     <div className="equipment-listing-page" style={{ minHeight: '100vh', background: '#fafcf9' }}>
       <div className="listing-container" style={{ maxWidth: 900, margin: '40px auto', background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(44,62,80,0.08)', padding: 32 }}>
@@ -49,14 +83,13 @@ const EquipmentDetails = () => {
             <h2 style={{ marginBottom: 8 }}>{equipment.name}</h2>
             <div className="demand-label" style={{ background: '#2B5727', color: '#fff', marginBottom: 12, display: 'inline-block' }}>{equipment.type}</div>
             <div className="form-group"><b>Year:</b> {equipment.year || 'N/A'} &nbsp; <b>Country:</b> {equipment.country || 'N/A'}</div>
-            <div className="form-group"><b>Location:</b> {equipment.address || ''}{equipment.city ? `, ${equipment.city}` : ''}{equipment.state ? `, ${equipment.state}` : ''}{equipment.zip ? `, ${equipment.zip}` : ''}</div>
-            <div className="form-group"><b>Description:</b> {equipment.description || <span style={{ color: '#aaa' }}>No description</span>}</div>
-            <div className="form-group"><b>License/Registration:</b> {equipment.license || 'N/A'}</div>
-            <div className="form-group"><b>Business Owner:</b> {equipment.isBusiness ? 'Yes' : 'No'}</div>
-            <div className="form-group"><b>Contact:</b> {equipment.contactName || 'N/A'}{equipment.contactPhone ? ` (${equipment.contactPhone})` : ''}</div>
-            <div className="form-group"><b>Terms Accepted:</b> {equipment.termsAccepted ? 'Yes' : 'No'}</div>
-            <div className="form-group"><b>Available Seasons:</b> {equipment.availableSeasons?.join(', ') || 'N/A'}</div>
-            <div className="form-group"><b>Pricing Type:</b> {equipment.pricingType || 'N/A'}</div>
+            <div className="form-group"><b>Location:</b> {getShortLocation(equipment)}</div>
+            <div className="form-group"><b>Description:</b> {getDescription(equipment.description)}</div>
+            <div className="form-group"><b>License/Registration:</b> {getLicenseStatus(equipment.license)}</div>
+            {equipment.availableSeasons && equipment.availableSeasons.length > 0 && (
+              <div className="form-group"><b>Available Seasons:</b> {equipment.availableSeasons.join(', ')}</div>
+            )}
+            <div className="form-group"><b>Pricing Type:</b> {equipment.pricingType ? equipment.pricingType.charAt(0).toUpperCase() + equipment.pricingType.slice(1) : 'N/A'}</div>
             {equipment.pricingType === 'manual' ? (
               <div className="form-group">
                 <b>Manual Prices:</b>
@@ -68,12 +101,24 @@ const EquipmentDetails = () => {
                 </ul>
               </div>
             ) : (
-              <div className="form-group"><b>Minimum Price:</b> {equipment.minPrice ? `${equipment.minPrice} MAD` : 'N/A'}</div>
+              <div className="form-group"><b>Minimum Price:</b> {equipment.minPrice ? `${equipment.minPrice} MAD/day` : 'N/A'}</div>
             )}
             <div className="form-group"><b>Minimum Rental Days:</b> {equipment.minRentalDays || 'N/A'}</div>
             <div className="form-group"><b>Deposit:</b> {equipment.deposit ? `${equipment.deposit} MAD` : 'N/A'}</div>
-            <div className="form-group"><b>Latitude:</b> {equipment.lat || 'N/A'}</div>
-            <div className="form-group"><b>Longitude:</b> {equipment.lng || 'N/A'}</div>
+            <div className="form-group"><b>Contact Info:</b> {maskPhone(equipment.contactPhone)} <button className="btn btn-sm btn-outline-primary" style={{ marginLeft: 8 }}>Request Full Contact</button></div>
+            {equipment.lat && equipment.lng && (
+              <div className="form-group" style={{ marginTop: 24 }}>
+                <b>Map Location:</b>
+                <div style={{ height: 220, width: '100%', borderRadius: 10, overflow: 'hidden', marginTop: 8, boxShadow: '0 2px 8px rgba(44,62,80,0.10)' }}>
+                  <MapContainer center={[equipment.lat, equipment.lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false} dragging={false} doubleClickZoom={false} zoomControl={false}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[equipment.lat, equipment.lng]}>
+                      <Popup>{equipment.name}</Popup>
+                    </Marker>
+                  </MapContainer>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
               <button className="btn btn-success" onClick={() => navigate(`/equipment/${equipment.id}/reserve`)}>Reserve Now</button>
               <button className="btn btn-outline-secondary" onClick={() => navigate('/equipment')}>Back to Equipment</button>

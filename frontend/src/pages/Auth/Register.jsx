@@ -57,7 +57,7 @@ const Register = () => {
       <div className="auth-card">
         <div className="auth-header">
           <h2>Create Account</h2>
-          <p className="text-muted">Join AgriConnect today</p>
+          <p className="text-muted">Join Agronet today</p>
         </div>
 
         {error && (

@@ -15,7 +15,7 @@ const Home = () => {
                 Connect with Agricultural Equipment Owners
               </h1>
               <p className="lead mb-4">
-                AgriConnect brings farmers and equipment owners together, making agriculture more accessible and efficient.
+                Agronet brings farmers and equipment owners together, making agriculture more accessible and efficient.
               </p>
               <div className="d-flex gap-3">
                 <Link to="/signup" className="btn btn-success btn-lg">
@@ -93,7 +93,7 @@ const Home = () => {
             <div className="col-lg-6">
               <h2 className="mb-4">About Us</h2>
               <p className="lead mb-4">
-                AgriConnect is revolutionizing agricultural equipment sharing by connecting farmers with equipment owners.
+                Agronet is revolutionizing agricultural equipment sharing by connecting farmers with equipment owners.
               </p>
               <p className="mb-4">
                 Our platform makes it easy for farmers to access the equipment they need while helping equipment owners maximize their investment.
@@ -105,7 +105,7 @@ const Home = () => {
             <div className="col-lg-6">
               <img
                 src="/aboutus.png"
-                alt="About AgriConnect"
+                alt="About Agronet"
                 className="img-fluid rounded-3 shadow"
               />
             </div>
