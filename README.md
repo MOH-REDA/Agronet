@@ -161,39 +161,22 @@ agronet/
 ## 📸 Screenshots
 
 ### Home & Equipment Browsing
-*Add screenshots here showing the equipment listing page, filters, and equipment cards*
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/d6609cc2-aaba-4445-9132-8094a07fd6ac" />
 
-```
-📁 Suggested locations for screenshots:
-- /docs/screenshots/equipment-list.png - Equipment grid view
-- /docs/screenshots/equipment-filter.png - Filtering interface
-- /docs/screenshots/equipment-detail.png - Equipment detail page
-```
 
 ### Reservation & Booking
-*Add screenshots of the reservation modal and booking flow*
+<img width="1514" height="848" alt="Screenshot 2026-03-28 142605" src="https://github.com/user-attachments/assets/70770ab1-0191-409b-bd06-c2aeee488d59" />
+<img width="1242" height="797" alt="Screenshot 2026-03-28 142627" src="https://github.com/user-attachments/assets/e4d52378-9abe-4564-92ad-91a84194e6d4" />
+<img width="1167" height="592" alt="Screenshot 2026-03-28 142639" src="https://github.com/user-attachments/assets/b621783b-d3d5-446d-acec-79dc354268bb" />
 
-```
-- /docs/screenshots/reservation-modal.png
-- /docs/screenshots/booking-confirmation.png
-```
 
 ### Admin Dashboard
-*Add screenshots of the admin management interface*
+<img width="1849" height="862" alt="image" src="https://github.com/user-attachments/assets/94829dfd-d474-4a6c-bf7f-ad48ba258cc3" />
 
-```
-- /docs/screenshots/admin-dashboard.png
-- /docs/screenshots/user-management.png
-- /docs/screenshots/equipment-management.png
-```
 
-### User Profile & Notifications
-*Add screenshots of user features*
+### User Notifications
+<img width="422" height="213" alt="image" src="https://github.com/user-attachments/assets/9f2657d1-e054-4389-a196-52512e5c8180" />
 
-```
-- /docs/screenshots/user-profile.png
-- /docs/screenshots/notifications.png
-```
 
 ---
 
