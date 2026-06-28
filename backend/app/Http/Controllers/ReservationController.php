@@ -287,6 +287,7 @@ class ReservationController extends Controller
             'data' => json_encode([
                 'reservation_id' => $reservation->id,
                 'equipment_id' => $reservation->equipment_id,
+                'equipment_name' => $reservation->equipment?->name,
                 'status' => $reservation->fresh()->status,
             ]),
             'status' => 'unread',
@@ -317,7 +318,12 @@ class ReservationController extends Controller
             'user_id' => $reservation->user_id,
             'type' => 'completion_requested',
             'message' => sprintf('The owner marked "%s" as completed. Please confirm or report a problem.', $reservation->equipment?->name ?? 'your booking'),
-            'data' => json_encode(['reservation_id' => $reservation->id]),
+            'data' => json_encode([
+                'reservation_id' => $reservation->id,
+                'equipment_id' => $reservation->equipment_id,
+                'equipment_name' => $reservation->equipment?->name,
+                'status' => 'owner_completed',
+            ]),
             'status' => 'unread',
         ]);
 

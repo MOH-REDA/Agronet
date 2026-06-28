@@ -18,6 +18,7 @@ const SmartEquipmentAdvisor = ({ filters = {} }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [footerVisible, setFooterVisible] = useState(false);
   const endRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -33,6 +34,18 @@ const SmartEquipmentAdvisor = ({ filters = {} }) => {
     const closeOnEscape = event => { if (event.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
+  }, []);
+
+  useEffect(() => {
+    const footer = document.querySelector('footer');
+    if (!footer || !('IntersectionObserver' in window)) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setFooterVisible(entry.isIntersecting),
+      { threshold: 0.02 },
+    );
+    observer.observe(footer);
+    return () => observer.disconnect();
   }, []);
 
   const submit = async (event, exampleText) => {
@@ -57,13 +70,13 @@ const SmartEquipmentAdvisor = ({ filters = {} }) => {
 
   return (
     <>
-      <button className={`advisor-launcher ${open ? 'open' : ''}`} type="button" onClick={() => setOpen(value => !value)} aria-label={open ? 'Close Smart Equipment Advisor' : 'Open Smart Equipment Advisor'} aria-expanded={open}>
+      <button className={`advisor-launcher ${open ? 'open' : ''} ${footerVisible ? 'near-footer' : ''}`} type="button" onClick={() => setOpen(value => !value)} aria-label={open ? 'Close Smart Equipment Advisor' : 'Open Smart Equipment Advisor'} aria-expanded={open}>
         {open ? <X size={22} /> : <Sparkles size={23} />}
         {!open && <span className="advisor-launcher-badge">AI</span>}
         <span className="advisor-launcher-label">Ask AgroNet</span>
       </button>
 
-      {open && <div className="advisor-chat" role="dialog" aria-modal="false" aria-labelledby="advisor-chat-title">
+      {open && <div className={`advisor-chat ${footerVisible ? 'near-footer' : ''}`} role="dialog" aria-modal="false" aria-labelledby="advisor-chat-title">
         <header className="advisor-chat-header">
           <span className="advisor-chat-avatar"><Sparkles size={20} /></span>
           <div><span>AgroNet AI</span><h2 id="advisor-chat-title">Equipment advisor</h2></div>

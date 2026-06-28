@@ -29,6 +29,7 @@ import {
 import './Navbar.css';
 import { getPublicMediaUrl } from '../../config/api';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { getNotificationCopy, localizeNotification, notificationTypeLabel } from './notificationCopy';
 
 const getNotificationIcon = (type) => {
   if (type === 'completion_requested') return CircleCheck;
@@ -56,11 +57,12 @@ const formatRelativeTime = (value, language) => {
     if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
   }
 
-  return 'just now';
+  return formatter.format(0, 'second');
 };
 
 const Navbar = () => {
   const { language, t } = useLanguage();
+  const notificationCopy = getNotificationCopy(language);
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('token');
@@ -314,31 +316,31 @@ const Navbar = () => {
                 >
                   <Bell size={21} aria-hidden="true" />
                   {unreadCount > 0 && (
-                    <span className="notif-count" aria-label={`${unreadCount} unread notifications`}>
+                    <span className="notif-count" aria-label={`${unreadCount} ${notificationCopy.unreadPlural}`}>
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>
                 {notifOpen && (
-                  <div className="notif-dropdown" role="dialog" aria-label="Notifications panel">
+                  <div className="notif-dropdown" role="dialog" aria-label={notificationCopy.panel}>
                     <div className="notif-header">
                       <div>
                         <h2>{t('nav.notifications')}</h2>
-                        <span>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</span>
+                        <span>{unreadCount ? `${unreadCount} ${unreadCount === 1 ? notificationCopy.unread : notificationCopy.unreadPlural}` : notificationCopy.caughtUp}</span>
                       </div>
                       <button
                         type="button"
                         className="notif-mark-all"
                         onClick={handleMarkAllRead}
                         disabled={!unreadCount}
-                        title="Mark all as read"
+                        title={notificationCopy.markAll}
                       >
                         <CheckCheck size={17} aria-hidden="true" />
-                        Mark all read
+                        {notificationCopy.markAll}
                       </button>
                     </div>
 
-                    <div className="notif-filters" role="tablist" aria-label="Notification filter">
+                    <div className="notif-filters" role="tablist" aria-label={notificationCopy.filter}>
                       <button
                         type="button"
                         role="tab"
@@ -346,7 +348,7 @@ const Navbar = () => {
                         className={notificationFilter === 'all' ? 'active' : ''}
                         onClick={() => setNotificationFilter('all')}
                       >
-                        All
+                        {notificationCopy.all}
                       </button>
                       <button
                         type="button"
@@ -355,13 +357,13 @@ const Navbar = () => {
                         className={notificationFilter === 'unread' ? 'active' : ''}
                         onClick={() => setNotificationFilter('unread')}
                       >
-                        Unread {unreadCount > 0 && <span>{unreadCount}</span>}
+                        {notificationCopy.unreadTab} {unreadCount > 0 && <span>{unreadCount}</span>}
                       </button>
                     </div>
 
                     <div className="notif-list">
                       {notifLoading ? (
-                        <div className="notif-loading" aria-label="Loading notifications">
+                        <div className="notif-loading" aria-label={notificationCopy.loading}>
                           <span />
                           <span />
                           <span />
@@ -380,10 +382,9 @@ const Navbar = () => {
                                 <NotificationIcon size={18} aria-hidden="true" />
                               </span>
                               <span className="notif-content">
-                                <span className="notif-message">{n.message || 'You have a new notification.'}</span>
-                                <span className="notif-date" title={new Date(n.created_at).toLocaleString()}>
-                                  {formatRelativeTime(n.created_at, language)}
-                                </span>
+                                <span className="notif-meta"><strong>{notificationTypeLabel(n.type, language)}</strong>{n.data?.reservation_id && <em>#{n.data.reservation_id}</em>}</span>
+                                <span className="notif-message">{localizeNotification(n, language)}</span>
+                                <span className="notif-date" title={new Date(n.created_at).toLocaleString(language)}>{formatRelativeTime(n.created_at, language)}</span>
                               </span>
                               {n.status === 'unread' && <span className="notif-unread-dot" aria-label="Unread" />}
                             </button>
@@ -392,7 +393,7 @@ const Navbar = () => {
                       ) : (
                         <div className="notif-empty">
                           <Inbox size={28} aria-hidden="true" />
-                          <strong>{notificationFilter === 'unread' ? 'No unread notifications' : 'No notifications yet'}</strong>
+                          <strong>{notificationFilter === 'unread' ? notificationCopy.noneUnread : notificationCopy.none}</strong>
                         </div>
                       )}
                     </div>
