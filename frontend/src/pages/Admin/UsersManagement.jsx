@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
-import { getAllUsers, promoteToAdmin, createAdmin, deleteUser, demoteAdmin } from '../../services/api';
+import { getAllUsers, promoteToAdmin, createAdmin, deleteUser, demoteAdmin, revokeUserOwnerVerification } from '../../services/api';
+import { getPublicMediaUrl } from '../../config/api';
+import DashboardLayout from '../../components/DashboardLayout/DashboardLayout';
 import './UsersManagement.css';
 
 const USERS_PER_PAGE = 5;
@@ -31,12 +33,7 @@ const UsersManagement = () => {
   const indexOfFirstUser = indexOfLastUser - USERS_PER_PAGE;
   const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
 
-  // Fetch users on component mount
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAllUsers();
@@ -50,7 +47,12 @@ const UsersManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  // Fetch users on component mount
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber);
@@ -110,6 +112,18 @@ const UsersManagement = () => {
     }
   };
 
+  const handleUnverifyOwner = async (user) => {
+    const reason = window.prompt(`Why are you unverifying ${user.prenom || ''} ${user.name}?`);
+    if (!reason) return;
+    try {
+      const response = await revokeUserOwnerVerification(user.id, reason);
+      toast.success(response.message);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.message || 'Failed to unverify owner');
+    }
+  };
+
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     
@@ -155,36 +169,41 @@ const UsersManagement = () => {
 
   if (loading) {
     return (
-      <div className="users-loading">
-        <div className="spinner"></div>
-        <p>Loading users...</p>
-      </div>
+      <DashboardLayout>
+        <div className="users-loading">
+          <div className="spinner"></div>
+          <p>Loading users...</p>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="users-management">
-      <div className="users-header">
-        <div className="header-content">
-          <h1>Manage Users</h1>
+    <DashboardLayout>
+      <div className="users-management">
+        <div className="users-header">
+          <div className="users-header-content">
+            <h1>Users</h1>
+            <p>Manage accounts, roles, and platform access.</p>
+          </div>
+          <div className="users-header-actions">
+            <button
+              className="btn-primary"
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create New Admin
+            </button>
+          </div>
         </div>
-        <div className="header-actions">
-          <button 
-            className="btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            Create New Admin
-          </button>
-        </div>
-      </div>
 
-      <div className="users-table-container">
-        <table className="users-table">
+        <div className="users-table-container">
+          <table className="users-table">
           <thead>
             <tr>
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Owner trust</th>
               <th>Created At</th>
               <th>Actions</th>
             </tr>
@@ -194,6 +213,7 @@ const UsersManagement = () => {
               <tr key={user.id}>
                 <td>
                   <div className="user-name">
+                    <span className="users-avatar">{user.avatar_url ? <img src={getPublicMediaUrl(user.avatar_url)} alt="" /> : `${user.prenom?.[0] || ''}${user.name?.[0] || ''}`.toUpperCase()}</span>
                     <span className="full-name">{user.prenom} {user.name}</span>
                   </div>
                 </td>
@@ -202,6 +222,11 @@ const UsersManagement = () => {
                   <span className={`badge ${user.is_admin ? 'badge-admin' : 'badge-user'}`}>
                     {user.is_admin ? 'Admin' : 'User'}
                   </span>
+                </td>
+                <td>
+                  {user.is_verified_owner ? (
+                    <div className="owner-trust-actions"><span className="owner-verified-badge">Verified</span><button onClick={() => handleUnverifyOwner(user)}>Unverify</button></div>
+                  ) : <span className="owner-not-verified">Not verified</span>}
                 </td>
                 <td>
                   {user.created_at ? (
@@ -242,37 +267,37 @@ const UsersManagement = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
 
-        <div className="table-info">
-          <span>Total Users: {users.length}</span>
-          <span>Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, users.length)} of {users.length} users</span>
+          <div className="table-info">
+            <span>Total Users: {users.length}</span>
+            <span>Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, users.length)} of {users.length} users</span>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <span className="page-info">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
 
-        {totalPages > 1 && (
-          <div className="pagination">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </button>
-            <span className="page-info">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* Create Admin Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay">
+        {showCreateModal && (
+          <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h2>Create New Admin</h2>
@@ -367,10 +392,11 @@ const UsersManagement = () => {
               </div>
             </form>
           </div>
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 };
 
-export default UsersManagement; 
+export default UsersManagement;

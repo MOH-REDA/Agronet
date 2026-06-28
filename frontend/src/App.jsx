@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar/Navbar';
 import Footer from './components/Footer/Footer';
@@ -6,6 +6,7 @@ import Home from './pages/Home/Home';
 import About from './pages/About/About';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import SocialAuthCallback from './pages/Auth/SocialAuthCallback';
 import Contact from './pages/Contact/Contact';
 import Equipment from './pages/Equipment/Equipment';
 import HowItWorks from './pages/HowItWorks/HowItWorks';
@@ -30,7 +31,17 @@ import EquipmentReservationDetails from './pages/Equipment/EquipmentReservationD
 import EquipmentReservationConfirm from './pages/Equipment/EquipmentReservationConfirm';
 
 const App = () => {
-  const isAuthenticated = !!localStorage.getItem('token');
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('token'));
+
+  useEffect(() => {
+    const syncAuth = () => setIsAuthenticated(!!localStorage.getItem('token'));
+    window.addEventListener('agronet:auth-changed', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    return () => {
+      window.removeEventListener('agronet:auth-changed', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
+  }, []);
 
   return (
     <Router>
@@ -73,6 +84,16 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   {isAdmin() ? <AdminDashboard /> : <UserDashboard />}
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/auth/social/callback" element={<SocialAuthCallback />} />
+
+            <Route
+              path="/my-bookings"
+              element={
+                <ProtectedRoute>
+                  <UserDashboard />
                 </ProtectedRoute>
               }
             />
@@ -179,4 +200,4 @@ const App = () => {
   );
 };
 
-export default App; 
+export default App;

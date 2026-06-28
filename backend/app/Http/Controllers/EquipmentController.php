@@ -8,13 +8,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
+use App\Models\User;
 
 class EquipmentController extends Controller
 {
     // GET /api/equipment
     public function index(Request $request)
     {
-        $query = Equipment::query();
+        $blockingStatuses = ['pending', 'requested', 'owner_accepted', 'awaiting_payment', 'payment_submitted', 'scheduled', 'in_progress', 'paid', 'active', 'owner_completed'];
+        $query = Equipment::with([
+                'user' => fn ($userQuery) => $userQuery
+                    ->select(['id', 'name', 'prenom', 'avatar_path', 'owner_verified_at'])
+                    ->withAvg('reviewsReceived', 'rating')
+                    ->withCount('reviewsReceived'),
+                'reservations' => fn ($reservationQuery) => $reservationQuery
+                    ->whereIn('status', $blockingStatuses)
+                    ->whereDate('end_date', '>=', today())
+                    ->orderBy('start_date')
+                    ->select(['id', 'equipment_id', 'start_date', 'end_date', 'status']),
+            ])
+            ->withCount([
+                'reservations as completed_hires_count' => fn ($reservationQuery) =>
+                    $reservationQuery->where('status', 'completed'),
+                'favoritedBy as favorites_count',
+            ]);
         // Filtering
         if ($types = $request->query('type')) {
             // Accepts type as array or comma-separated string
@@ -54,9 +72,13 @@ class EquipmentController extends Controller
         // Sorting
         if ($sortBy = $request->query('sortBy')) {
             if ($sortBy === 'price-low') {
-                $query->orderBy('daily_rate', 'asc');
+                $query->orderByRaw('COALESCE(minPrice, price, daily_rate, 0) asc');
             } elseif ($sortBy === 'price-high') {
-                $query->orderBy('daily_rate', 'desc');
+                $query->orderByRaw('COALESCE(minPrice, price, daily_rate, 0) desc');
+            } elseif ($sortBy === 'newest') {
+                $query->orderByDesc('created_at');
+            } elseif ($sortBy === 'most-booked') {
+                $query->orderByDesc('completed_hires_count');
             } elseif ($sortBy === 'recommended') {
                 // Placeholder: implement recommended logic as needed
                 $query->orderBy('id', 'desc');
@@ -67,7 +89,7 @@ class EquipmentController extends Controller
         } else {
             $query->orderBy('id', 'desc');
         }
-        $perPage = (int) $request->query('per_page', 10);
+        $perPage = min(100, max(1, (int) $request->query('per_page', 100)));
         $equipment = $query->paginate($perPage);
         $equipment->getCollection()->transform(function ($item) {
             // Normalize image paths
@@ -83,6 +105,22 @@ class EquipmentController extends Controller
                 return $img;
             })->toArray();
             $item->distance = null;
+            $today = Carbon::today();
+            $currentReservation = $item->reservations->first(fn ($reservation) =>
+                Carbon::parse($reservation->start_date)->startOfDay()->lte($today)
+                && Carbon::parse($reservation->end_date)->endOfDay()->gte($today)
+            );
+            $item->availability = $currentReservation
+                ? [
+                    'status' => Carbon::parse($currentReservation->end_date)->isToday() ? 'available_tomorrow' : 'booked_until',
+                    'date' => Carbon::parse($currentReservation->end_date)->toDateString(),
+                ]
+                : ['status' => 'available_today', 'date' => null];
+            $item->availability_ranges = $item->reservations->map(fn ($reservation) => [
+                'start' => Carbon::parse($reservation->start_date)->toDateString(),
+                'end' => Carbon::parse($reservation->end_date)->toDateString(),
+            ])->values();
+            unset($item->reservations);
             return $item;
         });
         return response()->json([
@@ -100,6 +138,33 @@ class EquipmentController extends Controller
         return response()->json(['data' => $types]);
     }
 
+    public function marketplaceStats()
+    {
+        return response()->json(['data' => [
+            'machines' => Equipment::where('status', 'active')->count(),
+            'categories' => Equipment::where('status', 'active')->distinct('type')->count('type'),
+            'verified_owners' => User::whereNotNull('owner_verified_at')->whereHas('equipment')->count(),
+            'average_rating' => round((float) \App\Models\EquipmentReview::avg('rating'), 1),
+        ]]);
+    }
+
+    public function favorites(Request $request)
+    {
+        return response()->json(['data' => $request->user()->favoriteEquipment()->pluck('equipment.id')]);
+    }
+
+    public function addFavorite(Request $request, Equipment $equipment)
+    {
+        $request->user()->favoriteEquipment()->syncWithoutDetaching([$equipment->id]);
+        return response()->json(['message' => 'Added to favorites.']);
+    }
+
+    public function removeFavorite(Request $request, Equipment $equipment)
+    {
+        $request->user()->favoriteEquipment()->detach($equipment->id);
+        return response()->json(['message' => 'Removed from favorites.']);
+    }
+
     // POST /api/equipment/{id}/reserve
     public function reserve(Request $request, $id)
     {
@@ -110,6 +175,9 @@ class EquipmentController extends Controller
         $equipment = Equipment::find($id);
         if (!$equipment || $equipment->status !== 'active') {
             return response()->json(['message' => 'Equipment not available for reservation'], 400);
+        }
+        if ((int) $equipment->user_id === (int) $user->id) {
+            return response()->json(['message' => 'You cannot reserve your own equipment.'], 422);
         }
         $validated = $request->validate([
             'start_date' => 'required|date|after_or_equal:today',
@@ -180,6 +248,19 @@ class EquipmentController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'hp' => 'nullable|integer|min:1|max:2000',
+            'gps_ready' => 'sometimes|boolean',
+            'brand' => 'nullable|string|max:120',
+            'fuel_type' => 'nullable|string|max:60',
+            'transmission' => 'nullable|string|max:60',
+            'working_width' => 'nullable|numeric|min:0|max:9999',
+            'machine_condition' => 'nullable|string|max:60',
+            'crop_types' => 'nullable|array',
+            'crop_types.*' => 'string|max:80',
+            'delivery_available' => 'sometimes|boolean',
+            'instant_booking' => 'sometimes|boolean',
+            'insurance_included' => 'sometimes|boolean',
+            'recently_serviced_at' => 'nullable|date',
             'license' => 'nullable|string|max:255',
             'country' => 'nullable|string|max:255',
             'year' => 'nullable|integer',
@@ -240,7 +321,11 @@ class EquipmentController extends Controller
     // GET /api/equipment/{id} (Get Details)
     public function show(Request $request, $id)
     {
-        $equipment = Equipment::with('user')->findOrFail($id);
+        $equipment = Equipment::with([
+            'user' => fn ($query) => $query->withAvg('reviewsReceived', 'rating')->withCount('reviewsReceived'),
+        ])->withAvg('reviews', 'rating')
+          ->withCount(['reviews', 'reservations as completed_hires_count' => fn ($query) => $query->where('status', 'completed')])
+          ->findOrFail($id);
         $user = $request->user();
         $isOwner = $user && ($user->id === $equipment->user_id || ($user->is_admin ?? false));
         // Only return reservation info if requested by owner or admin
@@ -296,6 +381,135 @@ class EquipmentController extends Controller
             'equipment' => $equipmentArr,
             'isOwner' => $isOwner,
             'reservations' => $reservations,
+        ]);
+    }
+
+    // PUT /api/equipment/{id} (Update Listing)
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+        $equipment = Equipment::findOrFail($id);
+
+        if ($equipment->user_id !== $user->id && !($user->is_admin ?? false)) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        $imagesRule = ['nullable', 'array', 'max:5'];
+        $imagesItemRule = [
+            'nullable',
+            function ($attribute, $value, $fail) use ($request) {
+                if (preg_match('/images\\.(\\d+)/', $attribute, $matches)) {
+                    $idx = $matches[1];
+                    $file = $request->file("images.$idx");
+                    if ($file) {
+                        if (!$file->isValid() || !in_array($file->extension(), ['jpg', 'jpeg', 'png', 'gif'])) {
+                            $fail('The ' . $attribute . ' must be a valid image file (jpg, jpeg, png, gif).');
+                        }
+                        if ($file->getSize() > 10240 * 1024) {
+                            $fail('The ' . $attribute . ' may not be greater than 10MB.');
+                        }
+                        return;
+                    }
+                }
+
+                if (is_string($value)) {
+                    $path = ltrim($value, '/');
+                    $isStoredImage = str_starts_with($path, 'storage/equipment/') || str_starts_with($path, 'equipment/');
+                    if (!$isStoredImage && !filter_var($value, FILTER_VALIDATE_URL)) {
+                        $fail('The ' . $attribute . ' must be a valid image path or URL.');
+                    }
+                } elseif (!is_null($value)) {
+                    $fail('The ' . $attribute . ' must be a file upload or a URL.');
+                }
+            }
+        ];
+
+        $validated = $request->validate(array_merge([
+            'name' => 'required|string|max:255',
+            'type' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'hp' => 'nullable|integer|min:1|max:2000',
+            'gps_ready' => 'sometimes|boolean',
+            'brand' => 'nullable|string|max:120',
+            'fuel_type' => 'nullable|string|max:60',
+            'transmission' => 'nullable|string|max:60',
+            'working_width' => 'nullable|numeric|min:0|max:9999',
+            'machine_condition' => 'nullable|string|max:60',
+            'crop_types' => 'nullable|array',
+            'crop_types.*' => 'string|max:80',
+            'delivery_available' => 'sometimes|boolean',
+            'instant_booking' => 'sometimes|boolean',
+            'insurance_included' => 'sometimes|boolean',
+            'recently_serviced_at' => 'nullable|date',
+            'license' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            'year' => 'nullable|integer',
+            'isBusiness' => 'boolean',
+            'contactName' => 'nullable|string|max:255',
+            'contactPhone' => 'nullable|string|max:32',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'zip' => 'nullable|string|max:32',
+            'lat' => 'nullable|numeric',
+            'lng' => 'nullable|numeric',
+            'termsAccepted' => 'required|boolean|in:1,true',
+            'availableSeasons' => 'nullable|array',
+            'availableSeasons.*' => 'string',
+            'pricingType' => 'nullable|string|max:32',
+            'minPrice' => 'nullable|numeric',
+            'price_low' => 'nullable|numeric',
+            'price_medium' => 'nullable|numeric',
+            'price_high' => 'nullable|numeric',
+            'price_very_high' => 'nullable|numeric',
+            'price' => 'nullable|numeric',
+            'minRentalDays' => 'nullable|integer',
+            'deposit' => 'nullable|numeric',
+            'status' => ['nullable', Rule::in(['draft', 'published', 'active'])],
+        ], [
+            'images' => $imagesRule,
+            'images.*' => $imagesItemRule,
+        ]));
+
+        $imageUrls = [];
+        if (isset($validated['images']) && is_array($validated['images'])) {
+            foreach ($validated['images'] as $idx => $img) {
+                if ($request->hasFile("images.$idx")) {
+                    $file = $request->file("images.$idx");
+                    if ($file && $file->isValid()) {
+                        $path = $file->store('equipment', 'public');
+                        $imageUrls[] = '/storage/' . ltrim($path, '/');
+                    }
+                } elseif (is_string($img)) {
+                    $imageUrls[] = $img;
+                }
+            }
+        }
+
+        $data = $validated;
+        unset($data['images']);
+
+        if (($data['status'] ?? null) === 'published') {
+            $data['status'] = 'active';
+        }
+
+        if (!empty($imageUrls)) {
+            if (is_array($equipment->images)) {
+                foreach ($equipment->images as $imgUrl) {
+                    $path = ltrim(str_replace('/storage/', '', $imgUrl), '/');
+                    if (Storage::disk('public')->exists($path)) {
+                        Storage::disk('public')->delete($path);
+                    }
+                }
+            }
+            $data['images'] = $imageUrls;
+        }
+
+        $equipment->update($data);
+
+        return response()->json([
+            'message' => 'Equipment updated',
+            'equipment' => $equipment->fresh(),
         ]);
     }
 

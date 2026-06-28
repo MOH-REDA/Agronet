@@ -6,6 +6,9 @@ A modern, full-stack peer-to-peer marketplace platform for renting and listing a
 ![Status](https://img.shields.io/badge/status-Active-brightgreen)
 ![Laravel](https://img.shields.io/badge/Laravel-12-red)
 ![React](https://img.shields.io/badge/React-19-blue)
+[![Backend CI](https://github.com/MOH-REDA/Agronet/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/MOH-REDA/Agronet/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/MOH-REDA/Agronet/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/MOH-REDA/Agronet/actions/workflows/frontend-ci.yml)
+[![Docker Build](https://github.com/MOH-REDA/Agronet/actions/workflows/docker-build.yml/badge.svg)](https://github.com/MOH-REDA/Agronet/actions/workflows/docker-build.yml)
 
 ---
 

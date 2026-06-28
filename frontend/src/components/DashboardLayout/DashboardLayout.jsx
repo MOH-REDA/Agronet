@@ -1,9 +1,13 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, isAdmin } from '../../services/api';
 import './DashboardLayout.css';
+import { getPublicMediaUrl } from '../../config/api';
+import { CalendarCheck, Home, LogOut, Plus, Settings, Tractor, Users } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 const DashboardLayout = ({ children }) => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const userIsAdmin = isAdmin();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -16,58 +20,39 @@ const DashboardLayout = ({ children }) => {
   return (
     <div className="dashboard-container">
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="logo-text">AC</div>
-          <h3>Agronet</h3>
-        </div>
-        
         <nav className="sidebar-nav">
-          <Link to="/dashboard" className={window.location.pathname === '/dashboard' ? 'active' : ''}>
-            <i className="fas fa-home"></i> Dashboard
-          </Link>
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'active' : ''}><Home size={18} /> {t('nav.dashboard')}</NavLink>
           
           {!userIsAdmin && (
             <>
-              <Link to="/bookings" className={window.location.pathname === '/bookings' ? 'active' : ''}>
-                <i className="fas fa-calendar"></i> Bookings
-              </Link>
-              <Link to="/equipment" className={window.location.pathname === '/equipment' ? 'active' : ''}>
-                <i className="fas fa-tractor"></i> Equipment
-              </Link>
-              <Link to="/reviews" className={window.location.pathname === '/reviews' ? 'active' : ''}>
-                <i className="fas fa-star"></i> Reviews
-              </Link>
+              <NavLink to="/equipment" className={({ isActive }) => isActive ? 'active' : ''}><Tractor size={18} /> {t('nav.marketplace')}</NavLink>
+              <NavLink to="/equipment/list" className={({ isActive }) => isActive ? 'active' : ''}><Plus size={18} /> {t('nav.list')}</NavLink>
             </>
           )}
           
           {userIsAdmin && (
             <>
-              <Link to="/admin/users" className={window.location.pathname === '/admin/users' ? 'active' : ''}>
-                <i className="fas fa-users"></i> Users
-              </Link>
-              <Link to="/admin/equipment" className={window.location.pathname === '/admin/equipment' ? 'active' : ''}>
-                <i className="fas fa-tractor"></i> Equipment
-              </Link>
+              <NavLink to="/my-bookings" className={({ isActive }) => isActive ? 'active' : ''}><CalendarCheck size={18} /> {t('nav.bookings')}</NavLink>
+              <NavLink to="/admin/users" className={({ isActive }) => isActive ? 'active' : ''}><Users size={18} /> {t('nav.users')}</NavLink>
+              <NavLink to="/admin/equipment" className={({ isActive }) => isActive ? 'active' : ''}><Tractor size={18} /> {t('nav.equipment')}</NavLink>
             </>
           )}
           
-          <Link to="/settings" className={window.location.pathname === '/settings' ? 'active' : ''}>
-            <i className="fas fa-cog"></i> Settings
-          </Link>
+          <NavLink to="/settings" className={({ isActive }) => isActive ? 'active' : ''}><Settings size={18} /> {t('nav.settings')}</NavLink>
         </nav>
 
         <div className="sidebar-footer">
           <div className="user-info">
-            <img src={`https://ui-avatars.com/api/?name=${user.name}&background=random`} alt="User" className="avatar" />
+            {user.avatar_url ? <img src={getPublicMediaUrl(user.avatar_url)} alt="User" className="avatar" /> : <span className="avatar avatar-fallback">{`${user.prenom?.[0] || ''}${user.name?.[0] || ''}`.toUpperCase() || 'A'}</span>}
             <div className="user-details">
               <span className="user-name">{user.name}</span>
-              <span className="user-role">{userIsAdmin ? 'Administrator' : 'User'}</span>
+              <span className="user-role">{userIsAdmin ? t('role.admin') : t('role.member')}</span>
             </div>
           </div>
         </div>
       </aside>
 
-      <main className="main-fontent">
+      <main className="main-content">
         <header className="dashboard-header">
           <div className="header-content">
             <h1>{window.location.pathname.split('/').pop().charAt(0).toUpperCase() + window.location.pathname.split('/').pop().slice(1)}</h1>
@@ -76,7 +61,7 @@ const DashboardLayout = ({ children }) => {
               <div className="user-header-info">
                 <span className="user-name-header">{user.name}</span>
                 <button onClick={handleLogout} className="logout-btn">
-                  <i className="fas fa-sign-out-alt"></i> Logout
+                  <LogOut size={16} /> {t('nav.signOut')}
                 </button>
               </div>
             </div>
@@ -90,4 +75,4 @@ const DashboardLayout = ({ children }) => {
   );
 };
 
-export default DashboardLayout; 
+export default DashboardLayout;

@@ -30,7 +30,7 @@ const Login = () => {
     setSuccess('');
     
     try {
-      const response = await login(formData);
+      await login(formData);
       setSuccess('Logged in successfully!');
       // Wait for 1.5 seconds to show the success message before redirecting
       setTimeout(() => {
@@ -131,4 +131,4 @@ const Login = () => {
   );
 };
 
-export default Login; 
+export default Login;

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -19,6 +20,7 @@ class AuthController extends Controller
             'password' => 'required|string|min:6',
             'address' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:32',
+            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:3072',
         ]);
 
         $user = User::create([
@@ -31,6 +33,12 @@ class AuthController extends Controller
             'phone_number' => $validated['phone_number'] ?? null,
         ]);
 
+        if ($request->hasFile('avatar')) {
+            $user->update([
+                'avatar_path' => $request->file('avatar')->store("avatars/{$user->id}", 'public'),
+            ]);
+        }
+
         return response()->json([
             'user' => [
                 'id' => $user->id,
@@ -38,6 +46,14 @@ class AuthController extends Controller
                 'prenom' => $user->prenom,
                 'email' => $user->email,
                 'is_admin' => $user->is_admin,
+                'address' => $user->address,
+                'phone_number' => $user->phone_number,
+                'payout_account_holder' => $user->payout_account_holder,
+                'payout_bank_name' => $user->payout_bank_name,
+                'payout_rib' => $user->payout_rib,
+                'payout_iban' => $user->payout_iban,
+                'payout_verified_at' => $user->payout_verified_at,
+                'avatar_url' => $user->avatar_url,
             ],
         ], 201);
     }
@@ -60,13 +76,10 @@ class AuthController extends Controller
         $token = $user->createToken('api_token')->plainTextToken;
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'prenom' => $user->prenom,
-                'email' => $user->email,
-                'is_admin' => $user->is_admin,
-            ],
+            'user' => $user->only([
+                'id', 'name', 'prenom', 'email', 'is_admin', 'avatar_url',
+                'is_verified_owner', 'owner_verified_at',
+            ]),
             'token' => $token,
         ]);
     }
@@ -74,13 +87,11 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         $user = $request->user();
-        return response()->json([
-            'id' => $user->id,
-            'name' => $user->name,
-            'prenom' => $user->prenom,
-            'email' => $user->email,
-            'is_admin' => $user->is_admin,
-        ]);
+        return response()->json($user->only([
+            'id', 'name', 'prenom', 'email', 'is_admin', 'address', 'phone_number',
+            'payout_account_holder', 'payout_bank_name', 'payout_rib', 'payout_iban',
+            'payout_verified_at', 'avatar_url', 'is_verified_owner', 'owner_verified_at',
+        ]));
     }
 
     public function updateProfile(Request $request)
@@ -92,6 +103,10 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'address' => 'nullable|string|max:255',
             'phone_number' => 'nullable|string|max:32',
+            'payout_account_holder' => 'nullable|string|max:255',
+            'payout_bank_name' => 'nullable|string|max:255',
+            'payout_rib' => 'nullable|string|max:32',
+            'payout_iban' => 'nullable|string|max:64',
         ]);
 
         $user->update($validated);
@@ -103,6 +118,16 @@ class AuthController extends Controller
                 'prenom' => $user->prenom,
                 'name' => $user->name,
                 'email' => $user->email,
+                'address' => $user->address,
+                'phone_number' => $user->phone_number,
+                'payout_account_holder' => $user->payout_account_holder,
+                'payout_bank_name' => $user->payout_bank_name,
+                'payout_rib' => $user->payout_rib,
+                'payout_iban' => $user->payout_iban,
+                'payout_verified_at' => $user->payout_verified_at,
+                'avatar_url' => $user->avatar_url,
+                'is_verified_owner' => $user->is_verified_owner,
+                'owner_verified_at' => $user->owner_verified_at,
             ]
         ]);
     }
@@ -129,6 +154,27 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Password updated successfully'
+        ]);
+    }
+
+    public function updateAvatar(Request $request)
+    {
+        $validated = $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:3072',
+        ]);
+        $user = $request->user();
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $user->update([
+            'avatar_path' => $request->file('avatar')->store("avatars/{$user->id}", 'public'),
+        ]);
+
+        return response()->json([
+            'message' => 'Profile picture updated.',
+            'user' => $user->fresh(),
         ]);
     }
 }

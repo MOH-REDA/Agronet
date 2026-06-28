@@ -1,197 +1,32 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Camera, Eye, EyeOff, Leaf, LockKeyhole, Mail, MapPin, Phone, ShieldCheck, UserRound, X } from 'lucide-react';
 import { register } from '../../services/api';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { getAuthCopy } from './authCopy';
+import SocialLoginButtons from './SocialLoginButtons';
 import './Auth.css';
 
 const Register = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    address: '',
-    phone_number: ''
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (!formData.address || !formData.phone_number) {
-      setError('Please fill in all required fields.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Remove confirmPassword before sending to API
-      const { confirmPassword, ...registerData } = formData;
-      await register(registerData);
-      // Registration successful, redirect to login
-      navigate('/login');
-    } catch (err) {
-      setError(err.message || 'Failed to register. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>Create Account</h2>
-          <p className="text-muted">Join Agronet today</p>
-        </div>
-
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label htmlFor="name" className="form-label">Full Name</label>
-            <input
-              type="text"
-              className="form-control"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              placeholder="Enter your full name"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="email" className="form-label">Email Address</label>
-            <input
-              type="email"
-              className="form-control"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter your email"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="password" className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-control"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Create a password"
-              minLength="6"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-            <input
-              type="password"
-              className="form-control"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              placeholder="Confirm your password"
-              minLength="6"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="address" className="form-label">Address</label>
-            <input
-              type="text"
-              className="form-control"
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              placeholder="Enter your address"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="phone_number" className="form-label">Phone Number</label>
-            <input
-              type="tel"
-              className="form-control"
-              id="phone_number"
-              name="phone_number"
-              value={formData.phone_number}
-              onChange={handleChange}
-              required
-              placeholder="Enter your phone number"
-            />
-          </div>
-
-          <div className="mb-3 form-check">
-            <input
-              type="checkbox"
-              className="form-check-input"
-              id="terms"
-              required
-            />
-            <label className="form-check-label" htmlFor="terms">
-              I agree to the Terms & Conditions
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-success w-100"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                Creating account...
-              </>
-            ) : (
-              'Create Account'
-            )}
-          </button>
-        </form>
-
-        <div className="mt-3 text-center">
-          <p>
-            Already have an account?{' '}
-            <a href="/login" className="text-success">
-              Sign in
-            </a>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  const { language } = useLanguage(); const c = getAuthCopy(language); const navigate = useNavigate(); const fileInput = useRef(null);
+  const [formData,setFormData] = useState({prenom:'',name:'',email:'',password:'',confirmPassword:'',address:'',phone_number:''}); const [avatar,setAvatar] = useState(null); const [avatarPreview,setAvatarPreview] = useState(''); const [showPassword,setShowPassword] = useState(false); const [termsAccepted,setTermsAccepted] = useState(false); const [error,setError] = useState(''); const [loading,setLoading] = useState(false);
+  useEffect(()=>()=>avatarPreview&&URL.revokeObjectURL(avatarPreview),[avatarPreview]);
+  const setField = (name,value) => setFormData(previous=>({...previous,[name]:value}));
+  const changeAvatar = event => { const file=event.target.files?.[0]; if(!file)return; if(file.size>3*1024*1024){setError(c.photoSize);return;} if(avatarPreview)URL.revokeObjectURL(avatarPreview);setAvatar(file);setAvatarPreview(URL.createObjectURL(file));setError(''); };
+  const removeAvatar = () => { if(avatarPreview)URL.revokeObjectURL(avatarPreview);setAvatar(null);setAvatarPreview('');if(fileInput.current)fileInput.current.value=''; };
+  const handleSubmit = async event => { event.preventDefault();setError('');if(formData.password!==formData.confirmPassword){setError(c.mismatch);return;}if(!termsAccepted){setError(c.acceptTerms);return;}const payload=new FormData();Object.entries(formData).forEach(([key,value])=>key!=='confirmPassword'&&value&&payload.append(key,value));if(avatar)payload.append('avatar',avatar);setLoading(true);try{await register(payload);navigate('/login?registered=1');}catch(reason){setError(reason?.errors?.email?c.emailUsed:reason?.message||c.registerFailed);}finally{setLoading(false);} };
+  return <div className="auth-page auth-register-page"><section className="auth-shell auth-register-shell">
+    <aside className="auth-visual auth-register-visual" aria-label="AgroNet"><div className="auth-visual-shade"/><div className="auth-visual-brand"><Leaf size={21}/> AgroNet</div><div className="auth-visual-content"><span className="auth-eyebrow">{c.registerEyebrow}</span><h1>{c.registerHero}</h1><p>{c.registerHeroCopy}</p><div className="auth-trust-row"><span><ShieldCheck size={18}/> {c.community}</span></div></div></aside>
+    <div className="auth-panel auth-register-panel"><div className="auth-form-wrap auth-form-wide"><header className="auth-heading"><span className="auth-kicker">{c.createKicker}</span><h2>{c.registerTitle}</h2><p>{c.registerSubtitle}</p></header>{error&&<div className="auth-alert error" role="alert">{error}</div>}<SocialLoginButtons mode="register"/>
+      <form className="auth-form" onSubmit={handleSubmit}><div className="auth-avatar-field"><div className="auth-avatar-preview">{avatarPreview?<img src={avatarPreview} alt={c.preview}/>:<UserRound size={28}/>}<button type="button" onClick={()=>fileInput.current?.click()} aria-label={c.choosePhoto}><Camera size={16}/></button></div><div><strong>{c.profilePicture} <span>{c.optional}</span></strong><p>{c.profileHint}</p><div className="auth-avatar-actions"><button type="button" onClick={()=>fileInput.current?.click()}>{avatar?c.changePhoto:c.addPhoto}</button>{avatar&&<button type="button" className="remove" onClick={removeAvatar}><X size={14}/> {c.remove}</button>}</div></div><input ref={fileInput} className="auth-file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={changeAvatar}/></div>
+        <div className="auth-form-grid"><label className="auth-field" htmlFor="register-first"><span>{c.firstName}</span><div className="auth-input-wrap"><UserRound size={18}/><input id="register-first" autoComplete="given-name" value={formData.prenom} onChange={event=>setField('prenom',event.target.value)} placeholder={c.firstName} required/></div></label><label className="auth-field" htmlFor="register-last"><span>{c.lastName}</span><div className="auth-input-wrap"><UserRound size={18}/><input id="register-last" autoComplete="family-name" value={formData.name} onChange={event=>setField('name',event.target.value)} placeholder={c.lastName} required/></div></label></div>
+        <label className="auth-field" htmlFor="register-email"><span>{c.email}</span><div className="auth-input-wrap"><Mail size={19}/><input id="register-email" type="email" autoComplete="email" value={formData.email} onChange={event=>setField('email',event.target.value)} placeholder="vous@exemple.com" required/></div></label>
+        <div className="auth-form-grid"><label className="auth-field" htmlFor="register-password"><span>{c.password}</span><div className="auth-input-wrap"><LockKeyhole size={18}/><input id="register-password" type={showPassword?'text':'password'} autoComplete="new-password" minLength="6" value={formData.password} onChange={event=>setField('password',event.target.value)} placeholder={c.minimum} required/><button type="button" className="auth-password-toggle" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?c.hidePassword:c.showPassword}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label><label className="auth-field" htmlFor="register-confirm"><span>{c.confirmPassword}</span><div className="auth-input-wrap"><LockKeyhole size={18}/><input id="register-confirm" type={showPassword?'text':'password'} autoComplete="new-password" minLength="6" value={formData.confirmPassword} onChange={event=>setField('confirmPassword',event.target.value)} placeholder={c.repeat} required/></div></label></div>
+        <div className="auth-form-grid auth-optional-grid"><label className="auth-field" htmlFor="register-phone"><span>{c.phone} <em>{c.optional}</em></span><div className="auth-input-wrap"><Phone size={18}/><input id="register-phone" type="tel" autoComplete="tel" value={formData.phone_number} onChange={event=>setField('phone_number',event.target.value)} placeholder="+212 6…"/></div></label><label className="auth-field" htmlFor="register-address"><span>{c.address} <em>{c.optional}</em></span><div className="auth-input-wrap"><MapPin size={18}/><input id="register-address" autoComplete="street-address" value={formData.address} onChange={event=>setField('address',event.target.value)} placeholder={c.addressPh}/></div></label></div>
+        <label className="auth-consent"><input type="checkbox" checked={termsAccepted} onChange={event=>setTermsAccepted(event.target.checked)}/><span>{c.consent}</span></label><button className="auth-primary-button" type="submit" disabled={loading}><span>{loading?c.creating:c.createAccount}</span><ArrowRight size={19}/></button>
+      </form><p className="auth-switch">{c.already} <Link to="/login">{c.signIn}</Link></p>
+    </div></div>
+  </section></div>;
 };
 
-export default Register; 
+export default Register;

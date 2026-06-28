@@ -1,232 +1,110 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
-import './Equipment.css';
-import dayjs from 'dayjs';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import { ArrowLeft, CalendarDays, Check, MapPin, Tractor, UserRound, UsersRound } from 'lucide-react';
+import api from '../../services/api';
+import { getStorageUrl } from '../../config/api';
+import BookingProgress from '../../components/Marketplace/BookingProgress';
+import { loadBookingDraft, saveBookingDraft } from '../../utils/bookingDraft';
+import './Equipment.css';
 
-const BASE_URL = 'http://localhost:8000';
+const modes = [
+  { value: 'equipment_only', icon: Tractor, title: 'Machine only', copy: 'You arrange an operator and transport if needed.' },
+  { value: 'owner_operator', icon: UserRound, title: 'Owner operates', copy: 'Request the machine together with its owner.' },
+  { value: 'owner_worker', icon: UsersRound, title: 'Worker included', copy: 'Request an experienced worker with the machine.' },
+];
 
 const EquipmentReservation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [equipment, setEquipment] = useState(null);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const saved = useMemo(() => loadBookingDraft(id), [id]);
+  const [equipment, setEquipment] = useState(saved?.equipment || null);
+  const [loading, setLoading] = useState(!saved?.equipment);
+  const [startDate, setStartDate] = useState(saved?.startDate ? dayjs(saved.startDate) : null);
+  const [endDate, setEndDate] = useState(saved?.endDate ? dayjs(saved.endDate) : null);
+  const [serviceMode, setServiceMode] = useState(saved?.serviceMode || 'equipment_only');
+  const [workType, setWorkType] = useState(saved?.workType || '');
+  const [workLocation, setWorkLocation] = useState(saved?.workLocation || '');
+  const [fieldSize, setFieldSize] = useState(saved?.fieldSize || '');
 
   useEffect(() => {
-    api.get(`/equipment/${id}`)
-      .then(res => setEquipment(res.data.equipment || res.data))
-      .catch(() => setEquipment(null));
+    api.get(`/equipment/${id}`).then(res => setEquipment(res.data.equipment || res.data)).catch(() => setEquipment(null)).finally(() => setLoading(false));
   }, [id]);
 
-  if (!equipment) return <div className="equipment-listing-page"><div className="listing-container">Loading...</div></div>;
+  const duration = startDate && endDate ? Math.max(1, endDate.startOf('day').diff(startDate.startOf('day'), 'day')) : 0;
+  const dailyRate = Number(equipment?.minPrice || equipment?.price || equipment?.daily_rate || 0);
+  const total = duration * dailyRate;
+  const minimumDays = Number(equipment?.minRentalDays || 1);
+  const isDateReserved = date => (equipment?.reserved_dates || []).some(range => {
+    const value = dayjs(date).startOf('day');
+    return !value.isBefore(dayjs(range.start).startOf('day')) && !value.isAfter(dayjs(range.end).startOf('day'));
+  });
+  const isRangeReserved = (start, end) => (equipment?.reserved_dates || []).some(range => !dayjs(end).isBefore(dayjs(range.start), 'day') && !dayjs(start).isAfter(dayjs(range.end), 'day'));
+  const rangeConflict = Boolean(startDate && endDate && isRangeReserved(startDate, endDate));
+  const minimumError = Boolean(startDate && endDate && duration < minimumDays);
+  const serviceFieldsMissing = serviceMode !== 'equipment_only' && (!workType.trim() || !workLocation.trim());
+  const canContinue = startDate && endDate && !rangeConflict && !minimumError && !serviceFieldsMissing;
+  const imageUrl = equipment?.images?.[0] ? getStorageUrl(equipment.images[0]) : '';
 
-  let imageUrl = '';
-  if (equipment.images && equipment.images.length > 0) {
-    if (typeof equipment.images[0] === 'string') {
-      let imgPath = equipment.images[0].replace(/\\/g, '/').trim();
-      imgPath = imgPath.replace(/^\/+/, '');
-      if (imgPath.startsWith('storage/')) {
-        imgPath = imgPath.substring('storage/'.length);
-      }
-      if (!imgPath.startsWith('equipment/')) {
-        imgPath = 'equipment/' + imgPath;
-      }
-      imageUrl = 'http://localhost:8000/storage/' + imgPath;
-    }
-  }
-
-  // Calculate duration and total
-  let duration = 0;
-  let total = 0;
-  if (startDate && endDate && equipment.minPrice) {
-    duration = Math.max(0, (new Date(endDate) - new Date(startDate)) / (1000*60*60*24));
-    total = duration * parseFloat(equipment.minPrice);
-  }
-
-  const isDateReserved = (date) => {
-    if (!equipment || !equipment.reserved_dates) return false;
-    return equipment.reserved_dates.some(range => {
-      const start = dayjs(range.start);
-      const end = dayjs(range.end);
-      return dayjs(date).isBetween(start, end, null, '[]');
-    });
+  const continueBooking = () => {
+    const draft = { startDate: startDate.format('YYYY-MM-DD'), endDate: endDate.format('YYYY-MM-DD'), serviceMode, workType, workLocation, fieldSize, equipment };
+    saveBookingDraft(id, draft);
+    navigate(`/equipment/${id}/reserve/details`, { state: draft });
   };
 
-  const isRangeReserved = (start, end) => {
-    if (!equipment || !equipment.reserved_dates) return false;
-    return equipment.reserved_dates.some(range => {
-      const reservedStart = dayjs(range.start);
-      const reservedEnd = dayjs(range.end);
-      return (
-        (dayjs(start).isBetween(reservedStart, reservedEnd, null, '[]')) ||
-        (dayjs(end).isBetween(reservedStart, reservedEnd, null, '[]')) ||
-        (reservedStart.isBetween(dayjs(start), dayjs(end), null, '[]'))
-      );
-    });
-  };
-
-  const showRangeError = startDate && endDate && isRangeReserved(startDate, endDate);
+  if (loading) return <div className="reservation-page"><div className="detail-loading"><span className="spinner" /> Preparing your booking…</div></div>;
+  if (!equipment) return <div className="reservation-page"><div className="detail-loading">Equipment unavailable. <button onClick={() => navigate('/equipment')}>Back to marketplace</button></div></div>;
 
   return (
-    <div className="reservation-page">
-      <div className="reservation-content">
-        {/* Left: Booking Details Card */}
-        <div className="reservation-card booking-details-card">
-          <div className="reservation-title">Booking Details</div>
-          <div className="reservation-label">Select Rental Period</div>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <div
-              className="reservation-date-fields"
-              style={{
-                display: 'flex',
-                gap: 12,
-                alignItems: 'flex-end',
-                marginBottom: 18,
-                background: 'transparent',
-                border: 'none',
-                borderRadius: 0,
-                boxShadow: 'none',
-                padding: 0,
-                width: '100%',
-                position: 'relative',
-                overflow: 'visible',
-                marginLeft: 0,
-                marginRight: 0,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 120 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: 4,
-                    fontWeight: 600,
-                    color: '#2B5727',
-                    fontSize: 15,
-                  }}
-                >
-                  Start Date
-                </label>
-                <DatePicker
-                  label=""
-                  value={startDate}
-                  onChange={setStartDate}
-                  minDate={dayjs()}
-                  shouldDisableDate={isDateReserved}
-                  slotProps={{
-                    day: ({ day }) =>
-                      isDateReserved(day)
-                        ? { sx: { bgcolor: '#ffeaea', color: '#e74c3c' } }
-                        : {},
-                    popper: {
-                      placement: 'bottom-start',
-                      sx: {
-                        zIndex: 1500,
-                        maxWidth: '95vw',
-                        width: 'auto',
-                        boxSizing: 'border-box',
-                      },
-                    },
-                  }}
-                  sx={{
-                    width: '100%',
-                    background: '#f8fafc',
-                    borderRadius: 2,
-                  }}
-                />
+    <main className="reservation-page">
+      <div className="booking-shell">
+        <button className="detail-back" onClick={() => navigate(`/equipment/${id}`)}><ArrowLeft size={17} /> Equipment details</button>
+        <BookingProgress current={1} />
+        <header className="booking-page-heading"><div><span>Build your booking</span><h1>When and how do you need it?</h1><p>Select a service, dates, and job details. You can review everything before submitting.</p></div></header>
+
+        <div className="reservation-content booking-layout">
+          <section className="reservation-card booking-details-card">
+            <div className="booking-section-heading"><span>1</span><div><h2>Choose a service</h2><p>Pick the option that best fits your job.</p></div></div>
+            <div className="service-mode-grid">{modes.map(({ value, icon: Icon, title, copy }) => <button key={value} type="button" className={`service-mode-card ${serviceMode === value ? 'selected' : ''}`} onClick={() => setServiceMode(value)}><span className="service-mode-icon">{React.createElement(Icon, { size: 21 })}</span><span><strong>{title}</strong><small>{copy}</small></span>{serviceMode === value && <Check className="service-check" size={17} />}</button>)}</div>
+
+            {serviceMode !== 'equipment_only' && <div className="booking-job-fields">
+              <label><span>Type of work *</span><input type="text" placeholder="e.g. Plowing, harvesting, spraying" value={workType} onChange={e => setWorkType(e.target.value)} /></label>
+              <label><span>Farm or work location *</span><div className="input-with-icon"><MapPin size={17} /><input type="text" placeholder="Address or nearby village" value={workLocation} onChange={e => setWorkLocation(e.target.value)} /></div></label>
+              <label><span>Field size <small>(optional)</small></span><div className="input-suffix"><input type="number" min="0" step="0.1" placeholder="0.0" value={fieldSize} onChange={e => setFieldSize(e.target.value)} /><b>ha</b></div></label>
+            </div>}
+
+            <div className="booking-divider" />
+            <div className="booking-section-heading"><span>2</span><div><h2>Select rental dates</h2><p>Unavailable dates are disabled. Minimum booking: {minimumDays} day{minimumDays === 1 ? '' : 's'}.</p></div></div>
+            <LocalizationProvider dateAdapter={AdapterDayjs}><div className="reservation-date-fields">
+              <label><span>Start date</span><DatePicker value={startDate} onChange={value => { setStartDate(value); if (endDate && value && endDate.isBefore(value, 'day')) setEndDate(null); }} minDate={dayjs()} shouldDisableDate={isDateReserved} slotProps={{ textField: { fullWidth: true }, popper: { sx: { zIndex: 1500 } } }} /></label>
+              <label><span>End date</span><DatePicker value={endDate} onChange={setEndDate} minDate={startDate || dayjs()} shouldDisableDate={isDateReserved} slotProps={{ textField: { fullWidth: true }, popper: { sx: { zIndex: 1500 } } }} /></label>
+            </div></LocalizationProvider>
+            {rangeConflict && <div className="booking-alert error">Those dates overlap an existing booking. Try another range.</div>}
+            {minimumError && <div className="booking-alert error">This owner requires a minimum rental of {minimumDays} days.</div>}
+
+            <button className="reservation-next-btn" disabled={!canContinue} onClick={continueBooking}>Review booking details <span>→</span></button>
+          </section>
+
+          <aside className="reservation-card equipment-summary-card booking-sticky-card">
+            {imageUrl ? <img src={imageUrl} alt={equipment.name} className="booking-summary-image" /> : <div className="equipment-image-placeholder">No image</div>}
+            <div className="equipment-summary-content">
+              <span className="detail-type">{equipment.type}</span><h2>{equipment.name}</h2>
+              <p className="equipment-location"><MapPin size={15} /> {[equipment.city, equipment.state].filter(Boolean).join(', ') || 'Location shared by owner'}</p>
+              <div className="booking-price-breakdown">
+                <div><span>Daily rate</span><strong>{dailyRate.toLocaleString('fr-MA')} MAD</strong></div>
+                <div><span>Duration</span><strong>{duration || '—'} {duration === 1 ? 'day' : 'days'}</strong></div>
+                <div className="booking-total"><span>Estimated rental</span><strong>{total.toLocaleString('fr-MA')} MAD</strong></div>
               </div>
-              <div style={{ flex: 1, minWidth: 120 }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: 4,
-                    fontWeight: 600,
-                    color: '#2B5727',
-                    fontSize: 15,
-                  }}
-                >
-                  End Date
-                </label>
-                <DatePicker
-                  label=""
-                  value={endDate}
-                  onChange={setEndDate}
-                  minDate={startDate || dayjs()}
-                  shouldDisableDate={isDateReserved}
-                  slotProps={{
-                    day: ({ day }) =>
-                      isDateReserved(day)
-                        ? { sx: { bgcolor: '#ffeaea', color: '#e74c3c' } }
-                        : {},
-                    popper: {
-                      placement: 'bottom-start',
-                      sx: {
-                        zIndex: 1500,
-                        maxWidth: '95vw',
-                        width: 'auto',
-                        boxSizing: 'border-box',
-                      },
-                    },
-                  }}
-                  sx={{
-                    width: '100%',
-                    background: '#f8fafc',
-                    borderRadius: 2,
-                  }}
-                />
-              </div>
+              {!startDate && <p className="booking-summary-hint"><CalendarDays size={16} /> Choose dates to see your estimated total.</p>}
+              <div className="booking-safe-note"><Check size={16} /> No charge until you review and submit.</div>
             </div>
-          </LocalizationProvider>
-          {showRangeError && (
-            <div style={{ color: '#e74c3c', marginTop: 8 }}>
-              The selected dates overlap with an existing reservation. Please choose different dates.
-            </div>
-          )}
-          <div className="reservation-stepper">
-            <div className="step-circle active">1</div>
-            <span className="step-label">of 3</span>
-          </div>
-          <button
-            className="reservation-next-btn"
-            disabled={!startDate || !endDate || showRangeError}
-            onClick={() => navigate(`/equipment/${id}/reserve/details`, { state: { startDate: startDate ? startDate.format('YYYY-MM-DD') : '', endDate: endDate ? endDate.format('YYYY-MM-DD') : '', equipment } })}
-          >
-            Next
-          </button>
-        </div>
-        {/* Right: Equipment Summary Card */}
-        <div className="reservation-card equipment-summary-card">
-          {imageUrl ? (
-            <img src={imageUrl} alt={equipment.name} className="equipment-image" />
-          ) : (
-            <div className="equipment-image-placeholder">No Image</div>
-          )}
-          <div className="equipment-summary-content">
-            <div className="equipment-title-row">
-              <span className="equipment-title">{equipment.name} {equipment.year && <span className="equipment-year">{equipment.year}</span>}</span>
-              {equipment.rating && (
-                <span className="equipment-rating">{equipment.rating} <span className="equipment-rating-count">({equipment.reviewCount || 0})</span></span>
-              )}
-            </div>
-            <div className="equipment-location">{equipment.city || ''}{equipment.city && equipment.state ? ', ' : ''}{equipment.state || ''}</div>
-            <div className="equipment-features-label">Features</div>
-            <div className="equipment-features-list">
-              <div>GPS Navigation</div>
-              <div>Auto-Steering</div>
-              <div>Climate Control</div>
-              <div>Performance Monitoring</div>
-            </div>
-            <div className="equipment-summary-label">Rental Summary</div>
-            <div className="equipment-summary-row"><span>Daily Rate</span><span>{equipment.minPrice ? `${equipment.minPrice} MAD` : '-'}</span></div>
-            <div className="equipment-summary-row"><span>Duration</span><span>{duration} days</span></div>
-            <div className="equipment-summary-row total-row"><span>Total</span><span>{total ? `${total} MAD` : '0 MAD'}</span></div>
-          </div>
+          </aside>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
-export default EquipmentReservation; 
+export default EquipmentReservation;

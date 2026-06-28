@@ -2,8 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './Equipment.css';
 import { deleteEquipment } from '../../services/api';
-
-const BASE_URL = "http://localhost:8000/api"; // Updated to match API URL
+import { getStorageUrl } from '../../config/api';
 
 const EquipmentConfirmation = () => {
   const location = useLocation();
@@ -37,17 +36,7 @@ const EquipmentConfirmation = () => {
   // Prepare image preview (if any)
   let imageUrl = '';
   if (form.images && form.images.length > 0) {
-    let imgPath = form.images[0].replace(/\\/g, '/').trim();
-    imgPath = imgPath.replace(/^\/+/, '');
-    // Remove any leading 'storage/' if present
-    if (imgPath.startsWith('storage/')) {
-      imgPath = imgPath.substring('storage/'.length);
-    }
-    // Prepend 'equipment/' if not present
-    if (!imgPath.startsWith('equipment/')) {
-      imgPath = 'equipment/' + imgPath;
-    }
-    imageUrl = 'http://localhost:8000/storage/' + imgPath;
+    imageUrl = getStorageUrl(form.images[0]);
   }
 
   return (
@@ -108,4 +97,4 @@ const EquipmentConfirmation = () => {
   );
 };
 
-export default EquipmentConfirmation; 
+export default EquipmentConfirmation;

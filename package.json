@@ -1,0 +1,13 @@
+{
+  "name": "agronet",
+  "private": true,
+  "scripts": {
+    "dev": "powershell -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
+    "test": "npm --prefix frontend run build && cd backend && php artisan test",
+    "docker:up": "powershell -ExecutionPolicy Bypass -File ./scripts/docker-up.ps1",
+    "docker:down": "docker compose --env-file .env.docker down",
+    "docker:logs": "docker compose --env-file .env.docker logs -f --tail=150",
+    "docker:seed": "docker compose --env-file .env.docker exec -T backend php artisan db:seed --force",
+    "docker:reset": "docker compose --env-file .env.docker down --volumes"
+  }
+}

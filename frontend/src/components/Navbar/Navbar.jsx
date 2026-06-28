@@ -1,226 +1,564 @@
-import React, { useState, useEffect } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Tractor } from 'lucide-react';
-import { logout, isAdmin, getNotifications, markNotificationRead } from '../../services/api';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Bell,
+  CalendarClock,
+  CheckCheck,
+  ChevronDown,
+  CircleCheck,
+  Heart,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Plus,
+  Settings,
+  Tractor,
+  Users,
+  X
+} from 'lucide-react';
+import {
+  logout,
+  isAdmin,
+  getNotifications,
+  getFavoriteEquipmentIds,
+  markNotificationRead,
+  markAllNotificationsRead
+} from '../../services/api';
 import './Navbar.css';
+import { getPublicMediaUrl } from '../../config/api';
+import { useLanguage } from '../../i18n/LanguageContext';
+
+const getNotificationIcon = (type) => {
+  if (type === 'completion_requested') return CircleCheck;
+  if (type === 'reservation_status') return CheckCheck;
+  if (type === 'reservation') return CalendarClock;
+  if (type === 'dispute') return AlertTriangle;
+  return Bell;
+};
+
+const formatRelativeTime = (value, language) => {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return '';
+
+  const seconds = Math.round((timestamp - Date.now()) / 1000);
+  const formatter = new Intl.RelativeTimeFormat(language, { numeric: 'auto' });
+  const units = [
+    ['year', 31536000],
+    ['month', 2592000],
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60],
+  ];
+
+  for (const [unit, size] of units) {
+    if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
+  }
+
+  return 'just now';
+};
 
 const Navbar = () => {
+  const { language, t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
   const isAuthenticated = !!localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
   const userIsAdmin = isAdmin();
 
-  // Notification state
+  const notificationRef = useRef(null);
+  const accountRef = useRef(null);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState('all');
+  const [favoriteCount, setFavoriteCount] = useState(0);
 
-  const fetchUserNotifications = async () => {
-    setNotifLoading(true);
+  useEffect(() => {
+    const syncUser = () => setUser(JSON.parse(localStorage.getItem('user') || '{}'));
+    window.addEventListener('agronet:user-updated', syncUser);
+    window.addEventListener('agronet:auth-changed', syncUser);
+    window.addEventListener('storage', syncUser);
+    return () => {
+      window.removeEventListener('agronet:user-updated', syncUser);
+      window.removeEventListener('agronet:auth-changed', syncUser);
+      window.removeEventListener('storage', syncUser);
+    };
+  }, []);
+
+  const fetchUserNotifications = useCallback(async (showLoading = false) => {
+    if (!isAuthenticated) return;
+    if (showLoading) setNotifLoading(true);
     try {
       const data = await getNotifications();
-      console.log('Fetched notifications:', data);
       if (Array.isArray(data)) {
         setNotifications(data);
-      } else if (data && Array.isArray(data.notifications)) {
-        setNotifications(data.notifications);
       } else if (data && Array.isArray(data.data)) {
         setNotifications(data.data);
       } else {
         setNotifications([]);
       }
-    } catch (err) {
-      setNotifications([]);
+    } catch (_err) {
+      if (showLoading) setNotifications([]);
+    } finally {
+      if (showLoading) setNotifLoading(false);
     }
-    setNotifLoading(false);
-  };
+  }, [isAuthenticated]);
+
+  const fetchFavoriteCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      setFavoriteCount(0);
+      return;
+    }
+
+    try {
+      const data = await getFavoriteEquipmentIds();
+      const ids = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setFavoriteCount(ids.length);
+    } catch (_err) {
+      setFavoriteCount(0);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (notifOpen && isAuthenticated) {
+    if (!isAuthenticated) return undefined;
+
+    fetchUserNotifications(true);
+    fetchFavoriteCount();
+    const intervalId = window.setInterval(() => fetchUserNotifications(), 45000);
+    const refreshOnFocus = () => fetchUserNotifications();
+    window.addEventListener('focus', refreshOnFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshOnFocus);
+    };
+  }, [fetchFavoriteCount, fetchUserNotifications, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+
+    const syncFavorites = () => fetchFavoriteCount();
+    window.addEventListener('focus', syncFavorites);
+    window.addEventListener('agronet:favorites-updated', syncFavorites);
+    return () => {
+      window.removeEventListener('focus', syncFavorites);
+      window.removeEventListener('agronet:favorites-updated', syncFavorites);
+    };
+  }, [fetchFavoriteCount, isAuthenticated]);
+
+  useEffect(() => {
+    if (!notifOpen) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!notificationRef.current?.contains(event.target)) setNotifOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setNotifOpen(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [notifOpen]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setAccountOpen(false);
+    setNotifOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!accountOpen) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!accountRef.current?.contains(event.target)) setAccountOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setAccountOpen(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+
+    const closeMobileMenu = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    const closeAtDesktopWidth = () => {
+      if (window.innerWidth > 991) setMobileOpen(false);
+    };
+
+    document.addEventListener('keydown', closeMobileMenu);
+    window.addEventListener('resize', closeAtDesktopWidth);
+    return () => {
+      document.removeEventListener('keydown', closeMobileMenu);
+      window.removeEventListener('resize', closeAtDesktopWidth);
+    };
+  }, [mobileOpen]);
+
+  const unreadCount = notifications.filter(notification => notification.status === 'unread').length;
+  const visibleNotifications = useMemo(
+    () => notificationFilter === 'unread'
+      ? notifications.filter(notification => notification.status === 'unread')
+      : notifications,
+    [notificationFilter, notifications]
+  );
+
+  const handleNotifClick = async (notif) => {
+    if (notif.status === 'unread') {
+      setNotifications(prev => prev.map(item => item.id === notif.id ? { ...item, status: 'read' } : item));
+      try {
+        await markNotificationRead(notif.id);
+      } catch (_err) {
+        fetchUserNotifications();
+      }
+    }
+
+    setNotifOpen(false);
+    const reservationId = notif.data?.reservation_id;
+    navigate(reservationId ? `/my-bookings?reservation=${reservationId}` : '/my-bookings');
+  };
+
+  const handleMarkAllRead = async () => {
+    if (!unreadCount) return;
+    setNotifications(prev => prev.map(item => ({ ...item, status: 'read' })));
+    try {
+      await markAllNotificationsRead();
+    } catch (_err) {
       fetchUserNotifications();
     }
-    // eslint-disable-next-line
-  }, [notifOpen, isAuthenticated]);
-
-  const handleNotifClick = (notif) => {
-    if (notif.status === 'unread') {
-      markNotificationRead(notif.id).then(() => {
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, status: 'read' } : n))
-        );
-      });
-    }
-    // Optionally, navigate or show details
   };
 
   const handleLogout = () => {
     logout();
+    setAccountOpen(false);
+    setMobileOpen(false);
     navigate('/login');
   };
 
+  const userInitials = `${user.prenom?.[0] || ''}${user.name?.[0] || ''}`.toUpperCase() || 'A';
+  const displayName = [user.prenom, user.name].filter(Boolean).join(' ') || 'Account';
+
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light sticky-top">
-      <div className="container">
-        <Link className="navbar-brand d-flex align-items-center" to="/">
-          <div style={{ height: 40, display: 'flex', alignItems: 'center' }}>
-            <img src="/AGRONET.svg" alt="Agronet Logo" style={{ maxHeight: '100%', width: 'auto', display: 'block' }} />
+    <header className="site-header">
+      <nav className="agronet-navbar" aria-label="Main navigation">
+        <div className="agronet-nav-shell">
+          <Link className="agronet-brand" to="/" aria-label="AgroNet home">
+            <span className="brand-logo-wrap">
+              <img src="/AGRONET.svg" alt="" className="brand-logo" />
+            </span>
+            <span className="brand-copy">
+              <strong>AgroNet</strong>
+              <small>{t('brand.tagline')}</small>
+            </span>
+          </Link>
+
+          <div className="desktop-nav-links">
+            <NavLink className={({ isActive }) => `primary-nav-link${isActive ? ' active' : ''}`} to="/equipment">
+              {t('nav.marketplace')}
+            </NavLink>
+            <NavLink className={({ isActive }) => `primary-nav-link${isActive ? ' active' : ''}`} to="/how-it-works">
+              {t('nav.how')}
+            </NavLink>
+            <NavLink className={({ isActive }) => `primary-nav-link${isActive ? ' active' : ''}`} to="/about">
+              {t('nav.about')}
+            </NavLink>
+            <NavLink className={({ isActive }) => `primary-nav-link${isActive ? ' active' : ''}`} to="/contact">
+              {t('nav.contact')}
+            </NavLink>
           </div>
-        </Link>
 
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarContent"
-          aria-controls="navbarContent"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-
-        <div className="collapse navbar-collapse" id="navbarContent">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/" end>
-                Home
-              </NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/equipment">
-                Equipment
-              </NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/how-it-works">
-                Walktrough
-              </NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/about">
-                About Us
-              </NavLink>
-            </li>
-            <li className="nav-item">
-              <NavLink className="nav-link" to="/contact">
-                Contact Us
-              </NavLink>
-            </li>
-          </ul>
-
-          <ul className="navbar-nav">
+          <div className="nav-actions">
             {isAuthenticated && (
-              <li className="nav-item position-relative">
+              <NavLink className="list-equipment-action desktop-only-action" to="/equipment/list">
+                <Plus size={17} aria-hidden="true" />
+                {t('nav.list')}
+              </NavLink>
+            )}
+
+            {isAuthenticated && (
+              <NavLink className="favorites-nav-link desktop-only-action" to="/equipment?favorites=1">
+                <Heart size={16} aria-hidden="true" />
+                {t('nav.saved')}
+                {favoriteCount > 0 && <span className="favorites-count">{favoriteCount}</span>}
+              </NavLink>
+            )}
+
+            {isAuthenticated && (
+              <div className="notification-menu" ref={notificationRef}>
                 <button
+                  type="button"
                   className="notif-bell-btn"
-                  style={{ background: 'none', border: 'none', position: 'relative', marginRight: 16, cursor: 'pointer' }}
-                  onClick={() => setNotifOpen((o) => !o)}
-                  aria-label="Notifications"
+                  onClick={() => {
+                    setNotifOpen((open) => !open);
+                    setAccountOpen(false);
+                    setMobileOpen(false);
+                  }}
+                  aria-label={t('nav.notifications')}
+                  aria-expanded={notifOpen}
+                  aria-haspopup="dialog"
                 >
-                  <span role="img" aria-label="bell" style={{ fontSize: 22 }}>🔔</span>
-                  {notifications.some(n => n.status === 'unread') && <span className="notif-dot" />}
+                  <Bell size={21} aria-hidden="true" />
+                  {unreadCount > 0 && (
+                    <span className="notif-count" aria-label={`${unreadCount} unread notifications`}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </button>
                 {notifOpen && (
-                  <div className="notif-dropdown">
-                    {notifLoading ? (
-                      <div className="notif-item">Loading...</div>
-                    ) : Array.isArray(notifications) && notifications.length > 0 ? (
-                      notifications.map(n => (
-                        <div
-                          key={n.id}
-                          className={`notif-item${n.status === 'unread' ? ' unread' : ''}`}
-                          onClick={() => handleNotifClick(n)}
-                        >
-                          <div>{n.message || JSON.stringify(n)}</div>
-                          <div className="notif-date">{new Date(n.created_at).toLocaleString()}</div>
+                  <div className="notif-dropdown" role="dialog" aria-label="Notifications panel">
+                    <div className="notif-header">
+                      <div>
+                        <h2>{t('nav.notifications')}</h2>
+                        <span>{unreadCount ? `${unreadCount} unread` : 'All caught up'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="notif-mark-all"
+                        onClick={handleMarkAllRead}
+                        disabled={!unreadCount}
+                        title="Mark all as read"
+                      >
+                        <CheckCheck size={17} aria-hidden="true" />
+                        Mark all read
+                      </button>
+                    </div>
+
+                    <div className="notif-filters" role="tablist" aria-label="Notification filter">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={notificationFilter === 'all'}
+                        className={notificationFilter === 'all' ? 'active' : ''}
+                        onClick={() => setNotificationFilter('all')}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={notificationFilter === 'unread'}
+                        className={notificationFilter === 'unread' ? 'active' : ''}
+                        onClick={() => setNotificationFilter('unread')}
+                      >
+                        Unread {unreadCount > 0 && <span>{unreadCount}</span>}
+                      </button>
+                    </div>
+
+                    <div className="notif-list">
+                      {notifLoading ? (
+                        <div className="notif-loading" aria-label="Loading notifications">
+                          <span />
+                          <span />
+                          <span />
                         </div>
-                      ))
-                    ) : (
-                      <div className="notif-item">No notifications</div>
-                    )}
+                      ) : visibleNotifications.length > 0 ? (
+                        visibleNotifications.map(n => {
+                          const NotificationIcon = getNotificationIcon(n.type);
+                          return (
+                            <button
+                              type="button"
+                              key={n.id}
+                              className={`notif-item${n.status === 'unread' ? ' unread' : ''}`}
+                              onClick={() => handleNotifClick(n)}
+                            >
+                              <span className={`notif-type-icon notif-type-${n.type || 'general'}`}>
+                                <NotificationIcon size={18} aria-hidden="true" />
+                              </span>
+                              <span className="notif-content">
+                                <span className="notif-message">{n.message || 'You have a new notification.'}</span>
+                                <span className="notif-date" title={new Date(n.created_at).toLocaleString()}>
+                                  {formatRelativeTime(n.created_at, language)}
+                                </span>
+                              </span>
+                              {n.status === 'unread' && <span className="notif-unread-dot" aria-label="Unread" />}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="notif-empty">
+                          <Inbox size={28} aria-hidden="true" />
+                          <strong>{notificationFilter === 'unread' ? 'No unread notifications' : 'No notifications yet'}</strong>
+                        </div>
+                      )}
+                    </div>
+
+                    <Link className="notif-footer" to="/my-bookings" onClick={() => setNotifOpen(false)}>
+                      {t('nav.bookings')}
+                    </Link>
                   </div>
                 )}
-              </li>
+              </div>
             )}
+
             {!isAuthenticated ? (
-              <>
-                <li className="nav-item">
-                  <NavLink className="nav-link" to="/login">
-                    Login
-                  </NavLink>
-                </li>
-                <li className="nav-item">
-                  <NavLink className="btn btn-success ms-lg-2" to="/register">
-                    Sign Up
-                  </NavLink>
-                </li>
-              </>
+              <div className="guest-actions desktop-only-action">
+                <NavLink className="sign-in-link" to="/login">{t('nav.signIn')}</NavLink>
+                <NavLink className="create-account-action" to="/register">{t('nav.register')}</NavLink>
+              </div>
             ) : (
-              <>
-                <li className="nav-item">
-                  <NavLink className="nav-link" to="/dashboard">
-                    Dashboard
-                  </NavLink>
-                </li>
-                <li className="nav-item">
-                  <NavLink className="btn btn-outline-success ms-lg-2 me-2" to="/equipment/list">
-                    Rent My Own Machine
-                  </NavLink>
-                </li>
-                <li className="nav-item dropdown">
-                  <a
-                    className="nav-link dropdown-toggle"
-                    href="#"
-                    id="navbarDropdown"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                  >
-                    {user.name || 'Account'}
-                  </a>
-                  <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                    <li>
-                      <NavLink className="dropdown-item" to="/dashboard">
-                        Dashboard
-                      </NavLink>
-                    </li>
+              <div className="account-menu desktop-only-action" ref={accountRef}>
+                <button
+                  type="button"
+                  className="account-trigger"
+                  onClick={() => {
+                    setAccountOpen((open) => !open);
+                    setNotifOpen(false);
+                  }}
+                  aria-label="Open account menu"
+                  aria-expanded={accountOpen}
+                  aria-haspopup="menu"
+                >
+                  <span className="account-avatar">{user.avatar_url ? <img src={getPublicMediaUrl(user.avatar_url)} alt="" /> : userInitials}</span>
+                  <span className="account-trigger-copy">
+                    <strong>{displayName}</strong>
+                    <small>{userIsAdmin ? t('role.admin') : t('role.member')}</small>
+                  </span>
+                  <ChevronDown size={16} aria-hidden="true" />
+                </button>
+
+                {accountOpen && (
+                  <div className="account-dropdown" role="menu">
+                    <div className="account-dropdown-header">
+                      <span className="account-avatar large">{user.avatar_url ? <img src={getPublicMediaUrl(user.avatar_url)} alt="" /> : userInitials}</span>
+                      <span>
+                        <strong>{displayName}</strong>
+                        <small>{user.email || (userIsAdmin ? 'Administrator' : 'AgroNet member')}</small>
+                      </span>
+                    </div>
+                    <NavLink className="account-menu-item" to="/dashboard" role="menuitem">
+                      <LayoutDashboard size={17} aria-hidden="true" />
+                      {t('nav.dashboard')}
+                    </NavLink>
+                    <NavLink className="account-menu-item" to="/my-bookings" role="menuitem">
+                      <CalendarClock size={17} aria-hidden="true" />
+                      {t('nav.bookings')}
+                    </NavLink>
+                    <NavLink className="account-menu-item" to="/equipment?favorites=1" role="menuitem">
+                      <Heart size={17} aria-hidden="true" />
+                      {t('nav.saved')} {favoriteCount > 0 ? `(${favoriteCount})` : ''}
+                    </NavLink>
                     {userIsAdmin && (
                       <>
-                        <li>
-                          <NavLink className="dropdown-item" to="/admin/users">
-                            Manage Users
-                          </NavLink>
-                        </li>
-                        <li>
-                          <NavLink className="dropdown-item" to="/admin/equipment">
-                            Manage Equipment
-                          </NavLink>
-                        </li>
+                        <NavLink className="account-menu-item" to="/admin/users" role="menuitem">
+                          <Users size={17} aria-hidden="true" />
+                          {t('nav.users')}
+                        </NavLink>
+                        <NavLink className="account-menu-item" to="/admin/equipment" role="menuitem">
+                          <Tractor size={17} aria-hidden="true" />
+                          {t('nav.equipment')}
+                        </NavLink>
                       </>
                     )}
-                    <li>
-                      <NavLink className="dropdown-item" to="/settings">
-                        Settings
-                      </NavLink>
-                    </li>
-                    <li><hr className="dropdown-divider" /></li>
-                    <li>
-                      <button
-                        className="dropdown-item text-danger"
-                        onClick={handleLogout}
-                      >
-                        Logout
-                      </button>
-                    </li>
-                  </ul>
-                </li>
-              </>
+                    <NavLink className="account-menu-item" to="/settings" role="menuitem">
+                      <Settings size={17} aria-hidden="true" />
+                      {t('nav.settings')}
+                    </NavLink>
+                    <div className="account-menu-divider" />
+                    <button className="account-menu-item danger" type="button" onClick={handleLogout} role="menuitem">
+                      <LogOut size={17} aria-hidden="true" />
+                      {t('nav.signOut')}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
-          </ul>
+
+            <button
+              type="button"
+              className="mobile-menu-toggle"
+              onClick={() => {
+                setMobileOpen((open) => !open);
+                setNotifOpen(false);
+                setAccountOpen(false);
+              }}
+              aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-navigation"
+            >
+              {mobileOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
+            </button>
+          </div>
         </div>
-      </div>
-    </nav>
+
+        {mobileOpen && (
+          <div className="mobile-nav-panel" id="mobile-navigation">
+            <div className="mobile-nav-links">
+              <NavLink className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`} to="/equipment">
+                {t('nav.marketplace')}
+              </NavLink>
+              <NavLink className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`} to="/how-it-works">
+                {t('nav.how')}
+              </NavLink>
+              <NavLink className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`} to="/about">
+                {t('nav.about')}
+              </NavLink>
+              <NavLink className={({ isActive }) => `mobile-nav-link${isActive ? ' active' : ''}`} to="/contact">
+                {t('nav.contact')}
+              </NavLink>
+            </div>
+
+            {isAuthenticated ? (
+              <div className="mobile-account-section">
+                <div className="mobile-account-identity">
+                  <span className="account-avatar large">{user.avatar_url ? <img src={getPublicMediaUrl(user.avatar_url)} alt="" /> : userInitials}</span>
+                  <span>
+                    <strong>{displayName}</strong>
+                    <small>{userIsAdmin ? t('role.admin') : t('role.member')}</small>
+                  </span>
+                </div>
+                <NavLink className="mobile-primary-action" to="/equipment/list">
+                  <Plus size={17} aria-hidden="true" />
+                  {t('nav.list')}
+                </NavLink>
+                <div className="mobile-account-links">
+                  <NavLink to="/dashboard">
+                    <LayoutDashboard size={17} aria-hidden="true" /> {t('nav.dashboard')}
+                  </NavLink>
+                  <NavLink to="/my-bookings">
+                    <CalendarClock size={17} aria-hidden="true" /> {t('nav.bookings')}
+                  </NavLink>
+                  <NavLink to="/equipment?favorites=1">
+                    <Heart size={17} aria-hidden="true" /> {t('nav.saved')} {favoriteCount > 0 ? `(${favoriteCount})` : ''}
+                  </NavLink>
+                  {userIsAdmin && (
+                    <NavLink to="/admin/users">
+                      <Users size={17} aria-hidden="true" /> {t('nav.users')}
+                    </NavLink>
+                  )}
+                  <NavLink to="/settings">
+                    <Settings size={17} aria-hidden="true" /> {t('nav.settings')}
+                  </NavLink>
+                  <button type="button" onClick={handleLogout}>
+                    <LogOut size={17} aria-hidden="true" /> {t('nav.signOut')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mobile-guest-actions">
+                <NavLink className="mobile-sign-in" to="/login">{t('nav.signIn')}</NavLink>
+                <NavLink className="mobile-create-account" to="/register">{t('nav.register')}</NavLink>
+              </div>
+            )}
+          </div>
+        )}
+      </nav>
+    </header>
   );
 };
 
-export default Navbar; 
+export default Navbar;

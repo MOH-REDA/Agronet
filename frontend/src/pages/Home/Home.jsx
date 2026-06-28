@@ -1,181 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Tractor, Users, MessageSquare } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CalendarCheck, CheckCircle2, Combine, Handshake, MapPin, Search, ShieldCheck, Sparkles, Star, Tractor, TrendingUp, UsersRound, Wrench } from 'lucide-react';
+import { getAllEquipment, getMarketplaceStats } from '../../services/api';
+import { getStorageUrl } from '../../config/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import './Home.css';
 
-const Home = () => {
-  return (
-    <div className="home">
-      {/* Hero Section */}
-      <section className="hero">
-        <div className="container">
-          <div className="row align-items-center min-vh-75">
-            <div className="col-lg-6">
-              <h1 className="display-4 fw-bold mb-4">
-                Connect with Agricultural Equipment Owners
-              </h1>
-              <p className="lead mb-4">
-                Agronet brings farmers and equipment owners together, making agriculture more accessible and efficient.
-              </p>
-              <div className="d-flex gap-3">
-                <Link to="/signup" className="btn btn-success btn-lg">
-                  Get Started
-                </Link>
-                <Link to="/how-it-works" className="btn btn-outline-dark btn-lg">
-                  Learn More
-                </Link>
-              </div>
-            </div>
-            <div className="col-lg-6">
-              <img
-                src="/agricultural-equipment.jpg"
-                alt="Agricultural Equipment"
-                className="img-fluid rounded-3 shadow-lg"
-                style={{ maxHeight: '500px', width: '100%', objectFit: 'cover' }}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="how-it-works py-5">
-        <div className="container">
-          <h2 className="text-center mb-5">How It Works</h2>
-          <div className="row g-4">
-            <div className="col-md-4">
-              <div className="card h-100 border-0 shadow-sm">
-                <div className="card-body text-center">
-                  <div className="feature-icon mb-3">
-                    <Users size={40} />
-                  </div>
-                  <h3 className="h4 mb-3">Create an Account</h3>
-                  <p className="text-muted">
-                    Sign up as a farmer or equipment owner and complete your profile.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card h-100 border-0 shadow-sm">
-                <div className="card-body text-center">
-                  <div className="feature-icon mb-3">
-                    <Tractor size={40} />
-                  </div>
-                  <h3 className="h4 mb-3">Find Equipment</h3>
-                  <p className="text-muted">
-                    Browse available equipment or list your machinery for rent.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className="card h-100 border-0 shadow-sm">
-                <div className="card-body text-center">
-                  <div className="feature-icon mb-3">
-                    <MessageSquare size={40} />
-                  </div>
-                  <h3 className="h4 mb-3">Connect & Collaborate</h3>
-                  <p className="text-muted">
-                    Communicate directly and arrange equipment rental terms.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* About Us Section */}
-      <section className="about-us py-5 bg-light">
-        <div className="container">
-          <div className="row align-items-center">
-            <div className="col-lg-6">
-              <h2 className="mb-4">About Us</h2>
-              <p className="lead mb-4">
-                Agronet is revolutionizing agricultural equipment sharing by connecting farmers with equipment owners.
-              </p>
-              <p className="mb-4">
-                Our platform makes it easy for farmers to access the equipment they need while helping equipment owners maximize their investment.
-              </p>
-              <Link to="/about" className="btn btn-outline-success">
-                Learn More About Us
-              </Link>
-            </div>
-            <div className="col-lg-6">
-              <img
-                src="/aboutus.png"
-                alt="About Agronet"
-                className="img-fluid rounded-3 shadow"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* What We Stand For Section */}
-      <section className="values-section py-5">
-        <div className="container">
-          <div className="text-center mb-5">
-            <h2 className="display-5 fw-bold">What We Stand For</h2>
-            <p className="lead text-muted">
-              Our core values guide everything we do, from product development to customer support
-            </p>
-          </div>
-
-          <div className="row g-4">
-            <div className="col-md-3">
-              <div className="value-card text-center">
-                <div className="value-icon bg-light-green">
-                  <i className="fas fa-shield-alt text-success"></i>
-                </div>
-                <h3 className="value-title">Trust</h3>
-                <p className="value-description">
-                  Verified users, secure payments, and honest listings build the foundation of our community
-                </p>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div className="value-card text-center">
-                <div className="value-icon bg-light-green">
-                  <i className="fas fa-leaf text-success"></i>
-                </div>
-                <h3 className="value-title">Sustainability</h3>
-                <p className="value-description">
-                  Maximizing equipment usage and reducing waste for a more sustainable agricultural future
-                </p>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div className="value-card text-center">
-                <div className="value-icon bg-light-green">
-                  <i className="fas fa-bolt text-success"></i>
-                </div>
-                <h3 className="value-title">Empowerment</h3>
-                <p className="value-description">
-                  Supporting farmers to grow faster with access to the right equipment at the right time
-                </p>
-              </div>
-            </div>
-
-            <div className="col-md-3">
-              <div className="value-card text-center">
-                <div className="value-icon bg-light-green">
-                  <i className="fas fa-users text-success"></i>
-                </div>
-                <h3 className="value-title">Community</h3>
-                <p className="value-description">
-                  Creating strong, local farming networks that support each other's success
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+const translations = {
+  fr: { eyebrow:'Le marché marocain du matériel partagé', title:'La bonne machine.', accent:'Au bon moment pour vos terres.', intro:'Louez du matériel agricole fiable près de chez vous, ou transformez vos machines inutilisées en revenu régulier grâce à un parcours clair.', explore:'Explorer le matériel', list:'Publier une machine', proof:['Propriétaires vérifiés','Réservations suivies','Matériel local'], visual:['Prêt pour la saison','Disponible près de chez vous','Communauté de confiance','Profils vérifiés et avis'], stats:['Machines publiées','Catégories','Propriétaires vérifiés','Note moyenne'], browse:'Explorer par besoin', categoryTitle:'Du matériel pour chaque étape de la saison', all:'Voir tout', fresh:'Nouveau sur AgroNet', recent:'Machines récemment publiées', real:'Du matériel réel proposé par les propriétaires de la plateforme.', market:'Parcourir le marché', perDay:'jour', simple:'Simple, de la recherche au terrain', flow:'Un parcours conçu autour du travail', flowCopy:'AgroNet réunit la machine, les dates, le service et le paiement dans une expérience claire.', how:'Voir comment fonctionne AgroNet', local:'Pensé pour l’agriculture locale', trustLabel:'Une confiance qui se mérite', trustTitle:'Sachez avec qui vous réservez', trustCopy:'Identité, historique, évaluations et paiement sont réunis dans la même expérience.', trust:['Propriétaires vérifiés','Avis après chaque location','Paiements traçables','Tableaux de bord clairs'], create:'Créer votre compte', own:'Vous possédez du matériel agricole ?', ownerTitle:'Faites travailler vos machines au-delà de vos terres.', ownerCopy:'Créez une annonce détaillée, choisissez vos disponibilités et gérez les demandes au même endroit.', categories:[['Tracteurs','La puissance pour chaque tâche'],['Moissonneuses','Réussissez votre récolte'],['Pulvérisateurs','Une protection précise'],['Services agricoles','Machines avec opérateur']], steps:[['Trouver la bonne machine','Comparez le matériel local, ses caractéristiques, son prix et son propriétaire.'],['Choisir vos dates','Sélectionnez le service et consultez le prix complet.'],['Réaliser le travail','Coordonnez-vous avec le propriétaire et suivez la réservation.']] },
+  en: { eyebrow:"Morocco's equipment-sharing marketplace",title:'The right machine.',accent:'Right when the land needs it.',intro:'Rent trusted agricultural equipment nearby, or turn idle machinery into reliable income through one clear workflow.',explore:'Explore equipment',list:'List your machine',proof:['Verified owners','Tracked bookings','Local equipment'],visual:['Ready for the season','Available near you','Trusted community','Verified profiles and reviews'],stats:['Machines listed','Categories','Verified owners','Average rating'],browse:'Browse by need',categoryTitle:'Equipment for every stage of the season',all:'View all',fresh:'Fresh on AgroNet',recent:'Recently listed machinery',real:'Real equipment from owners already using the marketplace.',market:'Browse marketplace',perDay:'day',simple:'Simple from search to soil',flow:'A workflow built around the work',flowCopy:'AgroNet keeps the machine, dates, service, and payment in one clear experience.',how:'See how AgroNet works',local:'Built for local agriculture',trustLabel:'Trust that earns its place',trustTitle:"Know who you're booking with",trustCopy:'Identity, history, ratings, and payment status belong in the same experience.',trust:['Verified owners','Completed-rental reviews','Traceable payments','Clear dashboards'],create:'Create your account',own:'Own agricultural equipment?',ownerTitle:'Let your machinery work beyond your fields.',ownerCopy:'Create a detailed listing, choose availability, and manage requests in one place.',categories:[['Tractors','Power for every field task'],['Harvesters','Bring the season home'],['Sprayers','Precise crop protection'],['Farm services','Machines with operators']],steps:[['Find the right machine','Compare local equipment, specifications, pricing, and owner trust.'],['Request your dates','Choose the service and review the complete price.'],['Get the job done','Coordinate with the owner and track the booking.']] },
+  ar: { eyebrow:'السوق المغربي لمشاركة المعدات',title:'الآلة المناسبة.',accent:'في الوقت الذي تحتاجها فيه الأرض.',intro:'استأجر معدات فلاحية موثوقة بالقرب منك، أو حوّل معداتك غير المستعملة إلى دخل منتظم عبر مسار واضح.',explore:'استكشف المعدات',list:'انشر معداتك',proof:['ملاك موثّقون','حجوزات متتبعة','معدات محلية'],visual:['جاهزة للموسم','متاحة بالقرب منك','مجتمع موثوق','ملفات موثقة وتقييمات'],stats:['معدات منشورة','الفئات','ملاك موثّقون','متوسط التقييم'],browse:'تصفح حسب الحاجة',categoryTitle:'معدات لكل مرحلة من الموسم',all:'عرض الكل',fresh:'جديد في أغرونت',recent:'معدات أضيفت حديثاً',real:'معدات حقيقية من ملاك يستخدمون المنصة.',market:'تصفح السوق',perDay:'يوم',simple:'بسيط من البحث إلى الحقل',flow:'مسار مصمم حول العمل',flowCopy:'يجمع أغرونت الآلة والتاريخ والخدمة والدفع في تجربة واضحة.',how:'اكتشف كيف يعمل أغرونت',local:'مصمم للفلاحة المحلية',trustLabel:'ثقة تستحق مكانها',trustTitle:'اعرف مع من تحجز',trustCopy:'تجتمع الهوية والسجل والتقييمات والدفع في تجربة واحدة.',trust:['ملاك موثّقون','تقييمات بعد الإيجار','دفع قابل للتتبع','لوحات تحكم واضحة'],create:'أنشئ حسابك',own:'هل تملك معدات فلاحية؟',ownerTitle:'دع معداتك تعمل خارج حقولك أيضاً.',ownerCopy:'أنشئ إعلاناً مفصلاً وحدد التوفر وأدر الطلبات من مكان واحد.',categories:[['الجرارات','قوة لكل مهمة'],['الحصادات','أنجز موسم الحصاد'],['المرشات','حماية دقيقة للمحاصيل'],['الخدمات الفلاحية','معدات مع سائق']],steps:[['اعثر على الآلة المناسبة','قارن المعدات والمواصفات والأسعار وثقة المالك.'],['اختر التواريخ','حدد الخدمة وراجع السعر الكامل.'],['أنجز العمل','نسّق مع المالك وتابع الحجز.']] }
 };
 
-export default Home; 
+const money = value => Number(value || 0).toLocaleString('fr-MA');
+
+const Home = () => {
+  const { language } = useLanguage(); const c = translations[language] || translations.fr;
+  const [stats,setStats] = useState({ machines:0,categories:0,verified_owners:0,average_rating:0 }); const [featured,setFeatured] = useState([]);
+  useEffect(() => { Promise.all([getMarketplaceStats(),getAllEquipment({per_page:3,sortBy:'newest'})]).then(([s,e]) => { setStats(s.data || s || {}); setFeatured(e.data || []); }).catch(() => {}); }, []);
+  const categories = c.categories.map(([name,copy],index) => ({name,copy,icon:[Tractor,Combine,Sparkles,Wrench][index]}));
+  const steps = c.steps.map(([title,copy],index) => ({title,copy,number:`0${index+1}`,icon:[Search,CalendarCheck,Handshake][index]}));
+  return <main className="ag-home">
+    <section className="ag-hero"><div className="ag-home-shell ag-hero-grid"><div className="ag-hero-copy"><span className="ag-eyebrow"><span /> {c.eyebrow}</span><h1>{c.title}<br/><em>{c.accent}</em></h1><p>{c.intro}</p><div className="ag-hero-actions"><Link className="ag-primary-cta" to="/equipment">{c.explore} <ArrowRight size={18}/></Link><Link className="ag-secondary-cta" to="/equipment/list">{c.list}</Link></div><div className="ag-hero-proof"><span><ShieldCheck size={17}/> {c.proof[0]}</span><span><CheckCircle2 size={17}/> {c.proof[1]}</span><span><MapPin size={17}/> {c.proof[2]}</span></div></div><div className="ag-hero-visual"><img src="/agronet-hero-v2.webp" alt=""/><div className="ag-visual-card ag-visual-availability"><span><CheckCircle2 size={19}/></span><div><strong>{c.visual[0]}</strong><small>{c.visual[1]}</small></div></div><div className="ag-visual-card ag-visual-rating"><Star size={18} fill="currentColor"/><div><strong>{c.visual[2]}</strong><small>{c.visual[3]}</small></div></div><div className="ag-visual-accent"/></div></div><div className="ag-home-shell ag-stats-strip"><div><strong>{stats.machines || '—'}</strong><span>{c.stats[0]}</span></div><div><strong>{stats.categories || '—'}</strong><span>{c.stats[1]}</span></div><div><strong>{stats.verified_owners || '—'}</strong><span>{c.stats[2]}</span></div><div><strong>{Number(stats.average_rating)>0?`${Number(stats.average_rating).toFixed(1)} ★`:'—'}</strong><span>{c.stats[3]}</span></div></div></section>
+    <section className="ag-home-section ag-categories-section"><div className="ag-home-shell"><header className="ag-section-heading"><div><span>{c.browse}</span><h2>{c.categoryTitle}</h2></div><Link to="/equipment">{c.all} <ArrowRight size={16}/></Link></header><div className="ag-category-grid">{categories.map(({name,copy,icon}) => <Link to="/equipment" className="ag-category-card" key={name}><span>{React.createElement(icon,{size:25})}</span><div><h3>{name}</h3><p>{copy}</p></div><ArrowRight size={17}/></Link>)}</div></div></section>
+    {featured.length>0&&<section className="ag-home-section ag-featured-section"><div className="ag-home-shell"><header className="ag-section-heading"><div><span>{c.fresh}</span><h2>{c.recent}</h2><p>{c.real}</p></div><Link to="/equipment">{c.market} <ArrowRight size={16}/></Link></header><div className="ag-featured-grid">{featured.map(item=><Link to={`/equipment/${item.id}`} className="ag-featured-card" key={item.id}><div className="ag-featured-image"><img src={item.images?.[0]?getStorageUrl(item.images[0]):'/agronet-harvest-v2.webp'} alt={item.name} loading="lazy"/><span>{item.type}</span>{item.user?.is_verified_owner&&<b><BadgeCheck size={14}/> ✓</b>}</div><div className="ag-featured-body"><div><h3>{item.name}</h3><p><MapPin size={14}/> {item.city||'Maroc'}</p></div><div className="ag-featured-price"><strong>{money(item.minPrice||item.price)} MAD</strong><span>/ {c.perDay}</span></div></div></Link>)}</div></div></section>}
+    <section className="ag-home-section ag-how-section"><div className="ag-home-shell ag-how-layout"><div className="ag-how-intro"><span className="ag-section-label">{c.simple}</span><h2>{c.flow}</h2><p>{c.flowCopy}</p><Link className="ag-inline-link" to="/how-it-works">{c.how} <ArrowRight size={16}/></Link></div><div className="ag-steps">{steps.map(({number,icon,title,copy})=><article key={number}><span className="ag-step-number">{number}</span><span className="ag-step-icon">{React.createElement(icon,{size:21})}</span><div><h3>{title}</h3><p>{copy}</p></div></article>)}</div></div></section>
+    <section className="ag-trust-section"><div className="ag-home-shell ag-trust-grid"><div className="ag-trust-image"><img src="/agronet-community-v2.webp" alt=""/><span><UsersRound size={20}/><strong>{c.local}</strong></span></div><div className="ag-trust-copy"><span className="ag-section-label">{c.trustLabel}</span><h2>{c.trustTitle}</h2><p>{c.trustCopy}</p><ul><li><BadgeCheck size={18}/> {c.trust[0]}</li><li><Star size={18}/> {c.trust[1]}</li><li><ShieldCheck size={18}/> {c.trust[2]}</li><li><TrendingUp size={18}/> {c.trust[3]}</li></ul><Link className="ag-primary-cta" to="/register">{c.create} <ArrowRight size={18}/></Link></div></div></section>
+    <section className="ag-owner-cta"><div className="ag-home-shell"><div><span>{c.own}</span><h2>{c.ownerTitle}</h2><p>{c.ownerCopy}</p></div><Link to="/equipment/list">{c.list} <ArrowRight size={18}/></Link></div></section>
+  </main>;
+};
+
+export default Home;

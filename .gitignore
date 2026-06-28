@@ -22,3 +22,6 @@ Thumbs.db
 
 # SonarQube
 sonar-project.properties
+
+# Docker runtime secrets
+.env.docker

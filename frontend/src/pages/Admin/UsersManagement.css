@@ -8,23 +8,25 @@
   margin-bottom: 2rem;
 }
 
-.header-content {
-  text-align: center;
-  margin-bottom: 1rem;
+.users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
 }
 
-.header-content h1 {
+.users-header-content h1 {
   margin: 0;
   color: #2B5727;
   font-size: 2rem;
 }
 
-.header-content p {
+.users-header-content p {
   margin: 0.5rem 0 0;
   color: #666;
 }
 
-.header-actions {
+.users-header-actions {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 1rem;
@@ -107,6 +109,14 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow: auto;
 }
+
+.user-name { display: flex; align-items: center; gap: 9px; }
+.users-avatar { width: 34px; height: 34px; flex: 0 0 34px; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: #48734f; border-radius: 50%; font-size: 10px; font-weight: 700; }
+.users-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.owner-trust-actions { display: flex; align-items: center; gap: 7px; }
+.owner-verified-badge { padding: 5px 8px; color: #286238; background: #e3f2e4; border-radius: 999px; font-size: 10px; font-weight: 800; }
+.owner-trust-actions button { padding: 5px 7px; color: #913b33; background: #fff; border: 1px solid #dfb4af; border-radius: 5px; font-size: 9px; font-weight: 700; }
+.owner-not-verified { color: #89918b; font-size: 11px; }
 
 .users-table {
   width: 100%;
@@ -384,4 +394,4 @@
     align-items: flex-start;
     gap: 1rem;
   }
-} 
+}

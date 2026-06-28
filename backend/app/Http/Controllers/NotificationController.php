@@ -14,8 +14,12 @@ class NotificationController extends Controller
         $user = $request->user();
         $notifications = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
+            ->limit(40)
             ->get();
-        return response()->json(['data' => $notifications]);
+        return response()->json([
+            'data' => $notifications,
+            'unread_count' => $notifications->where('status', 'unread')->count(),
+        ]);
     }
 
     // POST /api/notifications/{id}/read
@@ -26,5 +30,14 @@ class NotificationController extends Controller
         $notification->status = 'read';
         $notification->save();
         return response()->json(['message' => 'Notification marked as read']);
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        Notification::where('user_id', $request->user()->id)
+            ->where('status', 'unread')
+            ->update(['status' => 'read']);
+
+        return response()->json(['message' => 'All notifications marked as read']);
     }
 }

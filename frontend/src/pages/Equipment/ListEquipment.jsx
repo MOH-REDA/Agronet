@@ -1,586 +1,85 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Circle, MapContainer, Marker, TileLayer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import './Equipment.css';
-import { FaMapMarkerAlt } from 'react-icons/fa';
-import { createEquipment, updateEquipment } from '../../services/api';
-
-// Fix default marker icon for leaflet
+import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, CircleDollarSign, FileCheck2, ImagePlus, Info, MapPin, Phone, Save, ShieldCheck, Tractor, Trash2, UserRound, Wrench } from 'lucide-react';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
+import 'leaflet/dist/leaflet.css';
+import './Equipment.css';
+import './ListEquipment.css';
+import { createEquipment, updateEquipment } from '../../services/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 
-const steps = [
-  'Machine',
-  'Registration',
-  'Business',
-  'Contact',
-  'Location',
-  'Terms',
-  'Seasonal',
-  'Pricing'
-];
+L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
-const initialData = {
-  name: '',
-  type: '',
-  description: '',
-  images: [],
-  license: '',
-  country: '',
-  year: '',
-  isBusiness: false,
-  contactName: '',
-  contactPhone: '',
-  address: '',
-  city: '',
-  state: '',
-  zip: '',
-  termsAccepted: false,
-  availableSeasons: [],
-  price: '',
-  minRentalDays: '',
-  deposit: '',
-  pricingType: 'smart',
-  minPrice: '',
+const copyByLanguage = {
+  fr: {
+    steps: ['Machine', 'Propriétaire', 'Localisation', 'Tarification', 'Vérification'],
+    machineTitle: 'Présentez votre machine', machineHint: 'Les informations précises améliorent la visibilité et la confiance.', name: 'Nom du matériel', namePh: 'Ex. Tracteur John Deere 8R', type: 'Type de machine', choose: 'Sélectionner', types: ['Tracteur', 'Moissonneuse', 'Semoir', 'Pulvérisateur', 'Autre'], description: 'Description', descriptionPh: 'État, utilisation recommandée, accessoires inclus…', brand: 'Marque', fuel: 'Carburant', transmission: 'Transmission', width: 'Largeur de travail (m)', condition: 'État', serviced: 'Dernier entretien', hp: 'Puissance (ch)', optional: 'Facultatif', gps: 'GPS intégré', gpsHint: 'Affiche le badge GPS.', delivery: 'Livraison disponible', deliveryHint: 'Vous pouvez livrer la machine.', instant: 'Réservation instantanée', instantHint: 'Sans validation manuelle.', insurance: 'Assurance incluse', insuranceHint: 'Couverture valide incluse.', photo: 'Photo principale', photoHint: 'JPG, PNG ou GIF · 10 Mo maximum', photoAction: 'Choisir une photo', remove: 'Supprimer', ownerTitle: 'Propriété et contact', ownerHint: 'Ces détails permettent de vérifier l’annonce et de vous joindre.', license: 'Immatriculation / numéro de série', country: 'Pays d’immatriculation', year: 'Année', private: 'Je suis un propriétaire particulier', business: 'Je représente une entreprise', contactName: 'Nom du contact', contactPhone: 'Téléphone', locationTitle: 'Où se trouve le matériel ?', locationHint: 'Les locataires voient une zone approximative de 400 m, pas votre position exacte.', address: 'Adresse', addressPh: 'Saisissez une adresse ou cliquez sur la carte', city: 'Ville', region: 'Région / Province', postal: 'Code postal', search: 'Recherche…', map: 'Position approximative', pricingTitle: 'Définissez vos conditions', pricingHint: 'Un prix transparent attire des demandes plus sérieuses.', price: 'Prix journalier minimum', days: 'Durée minimale', dayUnit: 'jours', deposit: 'Caution remboursable', pricingInfo: 'Vous pourrez modifier ces montants depuis votre espace matériel.', reviewTitle: 'Vérifiez avant de publier', reviewHint: 'Relisez les informations principales de votre annonce.', noPhoto: 'Aucune photo ajoutée', summaryMachine: 'Machine', summaryLocation: 'Localisation', summaryPrice: 'Tarif', summaryContact: 'Contact', terms: 'J’accepte les conditions de publication et je confirme que ces informations sont exactes.', required: 'Veuillez compléter les champs requis de cette étape.', termsRequired: 'Vous devez accepter les conditions avant de publier.', failed: 'Impossible d’enregistrer le matériel.'
+  },
+  en: {
+    steps: ['Machine', 'Owner', 'Location', 'Pricing', 'Review'], machineTitle: 'Present your machine', machineHint: 'Accurate information improves visibility and trust.', name: 'Equipment name', namePh: 'e.g. John Deere 8R tractor', type: 'Machine type', choose: 'Select', types: ['Tractor', 'Harvester', 'Planter', 'Sprayer', 'Other'], description: 'Description', descriptionPh: 'Condition, recommended use, included accessories…', brand: 'Brand', fuel: 'Fuel', transmission: 'Transmission', width: 'Working width (m)', condition: 'Condition', serviced: 'Last serviced', hp: 'Horsepower', optional: 'Optional', gps: 'GPS equipped', gpsHint: 'Displays the GPS badge.', delivery: 'Delivery available', deliveryHint: 'You can deliver this machine.', instant: 'Instant booking', instantHint: 'No manual approval.', insurance: 'Insurance included', insuranceHint: 'Valid coverage included.', photo: 'Main photo', photoHint: 'JPG, PNG, or GIF · 10 MB maximum', photoAction: 'Choose a photo', remove: 'Remove', ownerTitle: 'Ownership and contact', ownerHint: 'These details help verify the listing and let renters reach you.', license: 'Registration / serial number', country: 'Registration country', year: 'Year', private: 'I am a private owner', business: 'I represent a business', contactName: 'Contact name', contactPhone: 'Phone', locationTitle: 'Where is the equipment?', locationHint: 'Renters see an approximate 400 m area, not your exact position.', address: 'Address', addressPh: 'Type an address or click the map', city: 'City', region: 'State / Province', postal: 'Postal code', search: 'Searching…', map: 'Approximate position', pricingTitle: 'Set your terms', pricingHint: 'Transparent pricing attracts more serious requests.', price: 'Minimum daily price', days: 'Minimum duration', dayUnit: 'days', deposit: 'Refundable deposit', pricingInfo: 'You can change these amounts later from your equipment workspace.', reviewTitle: 'Review before publishing', reviewHint: 'Check the important details of your listing.', noPhoto: 'No photo added', summaryMachine: 'Machine', summaryLocation: 'Location', summaryPrice: 'Price', summaryContact: 'Contact', terms: 'I accept the listing terms and confirm that this information is accurate.', required: 'Complete the required fields in this step.', termsRequired: 'Accept the terms before publishing.', failed: 'Could not save the equipment.'
+  },
+  ar: {
+    steps: ['الآلة', 'المالك', 'الموقع', 'التسعير', 'المراجعة'], machineTitle: 'قدّم آلتك', machineHint: 'المعلومات الدقيقة تحسن الظهور والثقة.', name: 'اسم المعدات', namePh: 'مثال: جرار John Deere 8R', type: 'نوع الآلة', choose: 'اختر', types: ['جرار', 'حصادة', 'آلة زرع', 'مرشة', 'أخرى'], description: 'الوصف', descriptionPh: 'الحالة والاستعمال المقترح والملحقات…', brand: 'العلامة', fuel: 'الوقود', transmission: 'ناقل الحركة', width: 'عرض العمل (م)', condition: 'الحالة', serviced: 'آخر صيانة', hp: 'القدرة بالحصان', optional: 'اختياري', gps: 'مجهزة بنظام GPS', gpsHint: 'إظهار شارة GPS.', delivery: 'التوصيل متاح', deliveryHint: 'يمكنك توصيل الآلة.', instant: 'حجز فوري', instantHint: 'دون موافقة يدوية.', insurance: 'التأمين مشمول', insuranceHint: 'تغطية سارية مشمولة.', photo: 'الصورة الرئيسية', photoHint: 'JPG أو PNG أو GIF · حتى 10 ميغابايت', photoAction: 'اختر صورة', remove: 'حذف', ownerTitle: 'الملكية والتواصل', ownerHint: 'تساعد هذه التفاصيل في التحقق والتواصل معك.', license: 'رقم التسجيل / الرقم التسلسلي', country: 'بلد التسجيل', year: 'السنة', private: 'أنا مالك فردي', business: 'أمثل شركة', contactName: 'اسم جهة التواصل', contactPhone: 'الهاتف', locationTitle: 'أين توجد المعدات؟', locationHint: 'يرى المستأجر نطاقاً تقريبياً 400 متر وليس موقعك الدقيق.', address: 'العنوان', addressPh: 'اكتب عنواناً أو انقر على الخريطة', city: 'المدينة', region: 'الجهة / الإقليم', postal: 'الرمز البريدي', search: 'جارٍ البحث…', map: 'الموقع التقريبي', pricingTitle: 'حدد شروطك', pricingHint: 'الأسعار الواضحة تجذب طلبات أكثر جدية.', price: 'الحد الأدنى للسعر اليومي', days: 'المدة الدنيا', dayUnit: 'أيام', deposit: 'الضمان القابل للاسترداد', pricingInfo: 'يمكنك تعديل هذه المبالغ لاحقاً.', reviewTitle: 'راجع قبل النشر', reviewHint: 'تحقق من المعلومات الأساسية لإعلانك.', noPhoto: 'لم تتم إضافة صورة', summaryMachine: 'الآلة', summaryLocation: 'الموقع', summaryPrice: 'السعر', summaryContact: 'التواصل', terms: 'أوافق على شروط النشر وأؤكد صحة هذه المعلومات.', required: 'أكمل الحقول المطلوبة في هذه الخطوة.', termsRequired: 'وافق على الشروط قبل النشر.', failed: 'تعذر حفظ المعدات.'
+  }
+};
+
+const initialData = { name: '', type: '', description: '', hp: '', gps_ready: false, brand: '', fuel_type: '', transmission: '', working_width: '', machine_condition: '', delivery_available: false, instant_booking: false, insurance_included: false, recently_serviced_at: '', images: [], license: '', country: 'Morocco', year: '', isBusiness: false, contactName: '', contactPhone: '', address: '', city: '', state: '', zip: '', lat: '', lng: '', termsAccepted: false, availableSeasons: [], pricingType: 'smart', minPrice: '', price: '', minRentalDays: '1', deposit: '' };
+
+const SectionHeading = ({ icon, title, hint }) => <header className="listing-section-heading"><span>{React.createElement(icon, { size: 21 })}</span><div><h2>{title}</h2><p>{hint}</p></div></header>;
+const Field = ({ label, optional, children }) => <label className="listing-field"><span>{label}{optional && <em>{optional}</em>}</span>{children}</label>;
+
+const MapClickMarker = ({ form, onPick }) => {
+  useMapEvents({ click: event => onPick(event.latlng.lat, event.latlng.lng) });
+  return form.lat && form.lng ? <Marker position={[form.lat, form.lng]} /> : null;
 };
 
 const ListEquipment = () => {
-  const [step, setStep] = useState(0);
-  const [form, setForm] = useState(initialData);
-  const [draftSaved, setDraftSaved] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isEditMode = location.state && location.state.edit && location.state.equipment;
-  const equipmentId = isEditMode ? location.state.equipment.id : null;
+  const { language, t } = useLanguage();
+  const c = copyByLanguage[language] || copyByLanguage.fr;
+  const navigate = useNavigate(); const location = useLocation();
+  const isEditMode = Boolean(location.state?.edit && location.state?.equipment); const equipmentId = location.state?.equipment?.id;
+  const [step, setStep] = useState(0); const [form, setForm] = useState(initialData); const [error, setError] = useState(''); const [draftSaved, setDraftSaved] = useState(false); const [submitting, setSubmitting] = useState(false);
+  const [addressValue, setAddressValue] = useState(''); const [suggestions, setSuggestions] = useState([]); const [loadingSuggestions, setLoadingSuggestions] = useState(false); const [showSuggestions, setShowSuggestions] = useState(false);
+  const [preview, setPreview] = useState(''); const fileInput = useRef(null);
 
-  // Location step state (move outside renderStep)
-  const [addressValue, setAddressValue] = React.useState('');
-  const [suggestions, setSuggestions] = React.useState([]);
-  const [loadingSuggestions, setLoadingSuggestions] = React.useState(false);
-  const [showSuggestions, setShowSuggestions] = React.useState(false);
+  useEffect(() => { if (!localStorage.getItem('token')) navigate('/login', { replace: true }); }, [navigate]);
+  useEffect(() => { if (isEditMode) { const equipment = location.state.equipment; setForm({ ...initialData, ...equipment, images: [] }); setAddressValue(equipment.address || ''); } }, [isEditMode, location.state]);
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+  useEffect(() => {
+    if (addressValue.trim().length < 3 || form.address === addressValue && form.lat) { setSuggestions([]); return undefined; }
+    const controller = new AbortController(); const timeout = window.setTimeout(async () => { setLoadingSuggestions(true); try { const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressValue)}&addressdetails=1&countrycodes=ma&limit=5`, { signal: controller.signal }); setSuggestions(await response.json()); } catch (_error) { setSuggestions([]); } finally { setLoadingSuggestions(false); } }, 450);
+    return () => { window.clearTimeout(timeout); controller.abort(); };
+  }, [addressValue, form.address, form.lat]);
 
-  React.useEffect(() => {
-    setAddressValue(form.address || '');
-  }, [form.address]);
-  React.useEffect(() => {
-    if (addressValue && addressValue.length > 2) {
-      setLoadingSuggestions(true);
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressValue)}&addressdetails=1&countrycodes=ma&limit=5`)
-        .then(res => res.json())
-        .then(data => {
-          setSuggestions(data);
-          setLoadingSuggestions(false);
-        });
-    } else {
-      setSuggestions([]);
-    }
-  }, [addressValue]);
-  const handleAddressInput = (e) => {
-    setAddressValue(e.target.value);
-    setForm(f => ({ ...f, address: e.target.value }));
-    setShowSuggestions(true);
-  };
-  const handleSelectSuggestion = (suggestion) => {
-    setAddressValue(suggestion.display_name);
-    setShowSuggestions(false);
-    setSuggestions([]);
-    setForm(f => ({
-      ...f,
-      address: suggestion.display_name,
-      city: suggestion.address?.city || suggestion.address?.town || suggestion.address?.village || '',
-      state: suggestion.address?.state || '',
-      zip: suggestion.address?.postcode || '',
-      lat: parseFloat(suggestion.lat),
-      lng: parseFloat(suggestion.lon),
-    }));
-  };
-  async function reverseGeocode(lat, lng) {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
-      const data = await res.json();
-      setForm(f => ({
-        ...f,
-        address: data.display_name || '',
-        city: data.address?.city || data.address?.town || data.address?.village || '',
-        state: data.address?.state || '',
-        zip: data.address?.postcode || '',
-        lat,
-        lng,
-      }));
-      setAddressValue(data.display_name || '');
-    } catch (e) {}
-  }
+  const progress = Math.round(((step + 1) / c.steps.length) * 100);
+  const update = event => { const { name, value, type, checked } = event.target; setForm(previous => ({ ...previous, [name]: type === 'checkbox' ? checked : value })); setError(''); };
+  const selectImage = event => { const file = event.target.files?.[0]; if (!file) return; if (preview) URL.revokeObjectURL(preview); setPreview(URL.createObjectURL(file)); setForm(previous => ({ ...previous, images: [file] })); };
+  const clearImage = () => { if (preview) URL.revokeObjectURL(preview); setPreview(''); setForm(previous => ({ ...previous, images: [] })); if (fileInput.current) fileInput.current.value = ''; };
 
-  // Only allow authenticated users
-  React.useEffect(() => {
-    if (!localStorage.getItem('token')) {
-      navigate('/login');
-    }
-  }, [navigate]);
+  const reverseGeocode = async (lat, lng) => { setForm(previous => ({ ...previous, lat, lng })); try { const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`); const data = await response.json(); const address = data.address || {}; setAddressValue(data.display_name || ''); setForm(previous => ({ ...previous, address: data.display_name || '', city: address.city || address.town || address.village || '', state: address.state || '', zip: address.postcode || '', lat, lng })); } catch (_error) { /* coordinates remain usable */ } };
+  const selectSuggestion = suggestion => { const address = suggestion.address || {}; setAddressValue(suggestion.display_name); setSuggestions([]); setShowSuggestions(false); setForm(previous => ({ ...previous, address: suggestion.display_name, city: address.city || address.town || address.village || '', state: address.state || '', zip: address.postcode || '', lat: Number(suggestion.lat), lng: Number(suggestion.lon) })); };
 
-  // Pre-fill form in edit mode
-  React.useEffect(() => {
-    if (isEditMode) {
-      const equipment = location.state.equipment;
-      setForm({
-        ...initialData,
-        ...equipment,
-        images: [], // Do not prefill images, let user re-upload if needed
-      });
-      if (equipment.address) setAddressValue(equipment.address);
-    }
-  }, [isEditMode, location.state]);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const validStep = () => { if (step === 0) return form.name.trim() && form.type; if (step === 1) return form.contactName.trim() && form.contactPhone.trim(); if (step === 2) return form.address.trim() && form.city.trim(); if (step === 3) return String(form.minPrice || form.price).trim() !== '' && Number(form.minPrice || form.price) >= 0 && Number(form.minRentalDays) >= 1; return true; };
+  const goNext = () => { if (!validStep()) { setError(c.required); return; } setStep(value => Math.min(value + 1, c.steps.length - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const saveDraft = () => { localStorage.setItem('agronet:equipment-draft', JSON.stringify({ ...form, images: [] })); setDraftSaved(true); window.setTimeout(() => setDraftSaved(false), 2400); };
+  const submit = async () => {
+    if (!form.termsAccepted) { setError(c.termsRequired); return; } setSubmitting(true); setError('');
+    try { const payload = new FormData(); Object.entries({ ...form, price: form.minPrice || form.price }).forEach(([key, value]) => { if (value === '' || value === null || value === undefined) return; if (key === 'images') value.forEach(file => file instanceof File && payload.append('images[]', file)); else if (Array.isArray(value)) value.forEach(item => payload.append(`${key}[]`, item)); else payload.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : value); }); payload.append('status', 'published'); const result = isEditMode ? await updateEquipment(equipmentId, payload) : await createEquipment(payload); navigate('/equipment/confirmation', { state: { form: result.equipment || result } }); } catch (reason) { setError(reason?.message || c.failed); } finally { setSubmitting(false); }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    setForm((prev) => ({ ...prev, images: file ? [file] : [] }));
-  };
+  const stepBody = (() => {
+    if (step === 0) return <><SectionHeading icon={Tractor} title={c.machineTitle} hint={c.machineHint} /><div className="listing-form-grid"><Field label={c.name}><input name="name" value={form.name} onChange={update} placeholder={c.namePh} required /></Field><Field label={c.type}><select name="type" value={form.type} onChange={update} required><option value="">{c.choose}</option>{c.types.map((label, index) => <option key={label} value={['Tractor','Harvester','Planter','Sprayer','Other'][index]}>{label}</option>)}</select></Field><Field label={c.description}><textarea name="description" value={form.description} onChange={update} placeholder={c.descriptionPh} rows="4" /></Field><div className="listing-photo-card"><div className="listing-photo-preview">{preview ? <img src={preview} alt="" /> : <ImagePlus size={34} />}</div><div><strong>{c.photo}</strong><p>{c.photoHint}</p><button type="button" onClick={() => fileInput.current?.click()}><Camera size={16} /> {c.photoAction}</button>{form.images.length > 0 && <button type="button" className="remove" onClick={clearImage}><Trash2 size={15} /> {c.remove}</button>}<input ref={fileInput} type="file" accept="image/jpeg,image/png,image/gif" onChange={selectImage} hidden /></div></div></div><div className="listing-subsection"><h3><Wrench size={18} /> Specifications</h3><div className="listing-spec-grid"><Field label={c.brand} optional={c.optional}><input name="brand" value={form.brand} onChange={update} /></Field><Field label={c.hp} optional={c.optional}><input type="number" name="hp" min="1" max="2000" value={form.hp} onChange={update} /></Field><Field label={c.fuel} optional={c.optional}><select name="fuel_type" value={form.fuel_type} onChange={update}><option value="">—</option><option>Diesel</option><option>Petrol</option><option>Electric</option><option>Hybrid</option></select></Field><Field label={c.transmission} optional={c.optional}><select name="transmission" value={form.transmission} onChange={update}><option value="">—</option><option>Manual</option><option>Automatic</option><option>Hydrostatic</option><option>CVT</option></select></Field><Field label={c.width} optional={c.optional}><input type="number" step="0.1" name="working_width" value={form.working_width} onChange={update} /></Field><Field label={c.condition} optional={c.optional}><select name="machine_condition" value={form.machine_condition} onChange={update}><option value="">—</option><option>Excellent</option><option>Good</option><option>Fair</option></select></Field><Field label={c.serviced} optional={c.optional}><input type="date" name="recently_serviced_at" value={String(form.recently_serviced_at || '').slice(0,10)} onChange={update} /></Field></div></div><div className="listing-capability-grid">{[['gps_ready',c.gps,c.gpsHint],['delivery_available',c.delivery,c.deliveryHint],['instant_booking',c.instant,c.instantHint],['insurance_included',c.insurance,c.insuranceHint]].map(([name,title,hint]) => <label key={name} className="listing-toggle-card"><input type="checkbox" name={name} checked={Boolean(form[name])} onChange={update} /><span className="listing-check"><Check size={14} /></span><span><strong>{title}</strong><small>{hint}</small></span></label>)}</div></>;
+    if (step === 1) return <><SectionHeading icon={UserRound} title={c.ownerTitle} hint={c.ownerHint} /><div className="listing-choice-grid"><label className={form.isBusiness ? '' : 'selected'}><input type="radio" checked={!form.isBusiness} onChange={() => setForm(previous => ({ ...previous, isBusiness: false }))} /> <UserRound size={20} /><strong>{c.private}</strong></label><label className={form.isBusiness ? 'selected' : ''}><input type="radio" checked={form.isBusiness} onChange={() => setForm(previous => ({ ...previous, isBusiness: true }))} /> <BadgeCheck size={20} /><strong>{c.business}</strong></label></div><div className="listing-form-grid two"><Field label={c.license} optional={c.optional}><input name="license" value={form.license} onChange={update} /></Field><Field label={c.country}><select name="country" value={form.country} onChange={update}><option value="Morocco">Maroc</option><option value="France">France</option><option value="Other">Autre</option></select></Field><Field label={c.year} optional={c.optional}><select name="year" value={form.year} onChange={update}><option value="">—</option>{Array.from({ length: 40 }, (_, index) => new Date().getFullYear() - index).map(year => <option key={year}>{year}</option>)}</select></Field><Field label={c.contactName}><input name="contactName" value={form.contactName} onChange={update} required /></Field><Field label={c.contactPhone}><div className="listing-input-icon"><Phone size={17} /><input name="contactPhone" type="tel" value={form.contactPhone} onChange={update} placeholder="+212 6…" required /></div></Field></div></>;
+    if (step === 2) return <><SectionHeading icon={MapPin} title={c.locationTitle} hint={c.locationHint} /><div className="listing-location-grid"><div><Field label={c.address}><div className="listing-address-wrap"><input value={addressValue} onChange={event => { setAddressValue(event.target.value); setForm(previous => ({ ...previous, address: event.target.value })); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} placeholder={c.addressPh} autoComplete="off" required />{showSuggestions && suggestions.length > 0 && <div className="listing-suggestions">{suggestions.map(suggestion => <button type="button" key={suggestion.place_id} onMouseDown={() => selectSuggestion(suggestion)}><MapPin size={15} /> {suggestion.display_name}</button>)}</div>}{loadingSuggestions && <small>{c.search}</small>}</div></Field><div className="listing-form-grid two"><Field label={c.city}><input name="city" value={form.city} onChange={update} required /></Field><Field label={c.region}><input name="state" value={form.state} onChange={update} /></Field><Field label={c.postal}><input name="zip" value={form.zip} onChange={update} /></Field></div></div><div className="listing-map-card"><span>{c.map}</span><MapContainer key={`${form.lat || 31.79}-${form.lng || -7.09}`} center={form.lat && form.lng ? [form.lat,form.lng] : [31.7917,-7.0926]} zoom={form.lat ? 12 : 5} scrollWheelZoom={false}><TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /><MapClickMarker form={form} onPick={reverseGeocode} />{form.lat && form.lng && <Circle center={[form.lat,form.lng]} radius={400} pathOptions={{ color:'#2f6a3b', fillOpacity:.12 }} />}</MapContainer></div></div></>;
+    if (step === 3) return <><SectionHeading icon={CircleDollarSign} title={c.pricingTitle} hint={c.pricingHint} /><div className="listing-price-grid"><Field label={c.price}><div className="listing-money-input"><input name="minPrice" type="number" min="0" value={form.minPrice} onChange={update} required /><span>MAD / jour</span></div></Field><Field label={c.days}><div className="listing-money-input"><input name="minRentalDays" type="number" min="1" value={form.minRentalDays} onChange={update} required /><span>{c.dayUnit}</span></div></Field><Field label={c.deposit}><div className="listing-money-input"><input name="deposit" type="number" min="0" value={form.deposit} onChange={update} /><span>MAD</span></div></Field></div><div className="listing-info"><Info size={20} /><span>{c.pricingInfo}</span></div></>;
+    return <><SectionHeading icon={FileCheck2} title={c.reviewTitle} hint={c.reviewHint} /><div className="listing-review"><div className="listing-review-image">{preview ? <img src={preview} alt="" /> : <Tractor size={42} />}<span>{preview ? form.name : c.noPhoto}</span></div><div className="listing-review-grid"><article><Tractor size={18} /><span>{c.summaryMachine}</span><strong>{form.name || '—'} · {form.type || '—'}</strong></article><article><MapPin size={18} /><span>{c.summaryLocation}</span><strong>{form.city || form.address || '—'}</strong></article><article><CircleDollarSign size={18} /><span>{c.summaryPrice}</span><strong>{form.minPrice || form.price || '0'} MAD / jour</strong></article><article><Phone size={18} /><span>{c.summaryContact}</span><strong>{form.contactName || '—'} · {form.contactPhone || '—'}</strong></article></div></div><label className="listing-terms"><input type="checkbox" name="termsAccepted" checked={Boolean(form.termsAccepted)} onChange={update} /><ShieldCheck size={22} /><span>{c.terms}</span></label></>;
+  })();
 
-  const handleNext = async () => {
-    if (step === steps.length - 1) {
-      try {
-        const filteredImages = (form.images || []).filter(file => file instanceof File);
-        let payload = new FormData();
-        Object.entries({ ...form, images: filteredImages }).forEach(([key, value]) => {
-          if (key === 'images' && Array.isArray(value) && value.length > 0) {
-            value.forEach((file) => {
-              if (file instanceof File) {
-                payload.append('images[]', file);
-              }
-            });
-          } else if (Array.isArray(value)) {
-            value.forEach((v) => payload.append(`${key}[]`, v));
-          } else if (typeof value === 'boolean') {
-            payload.append(key, value ? 1 : 0);
-          } else {
-            payload.append(key, value);
-          }
-        });
-        payload.append('status', 'published');
-        let created;
-        if (isEditMode && equipmentId) {
-          created = await updateEquipment(equipmentId, payload);
-        } else {
-          created = await createEquipment(payload);
-        }
-        navigate('/equipment/confirmation', { state: { form: created.equipment || created } });
-      } catch (err) {
-        alert('Failed to add equipment: ' + (err.message || err));
-      }
-    } else {
-      setStep((s) => Math.min(s + 1, steps.length - 1));
-    }
-  };
-  const handlePrev = () => setStep((s) => Math.max(s - 1, 0));
-  const handleSaveDraft = () => setDraftSaved(true);
-
-  // Step content renderers
-  const renderStep = () => {
-    switch (step) {
-      case 0:
-        return (
-          <div>
-            <h3>Machine Information</h3>
-            <div className="form-group">
-              <label>Machine Name</label>
-              <input name="name" value={form.name} onChange={handleChange} placeholder="e.g., John Deere 8R Tractor" required />
-            </div>
-            <div className="form-group">
-              <label>Machine Type</label>
-              <select name="type" value={form.type} onChange={handleChange} required>
-                <option value="">Select machine type</option>
-                <option value="Tractor">Tractor</option>
-                <option value="Harvester">Harvester</option>
-                <option value="Planter">Planter</option>
-                <option value="Sprayer">Sprayer</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Description</label>
-              <textarea name="description" value={form.description} onChange={handleChange} placeholder="Description" />
-            </div>
-            <div className="form-group">
-              <label>Machine Images</label>
-              <input type="file" accept="image/*" onChange={handleImageUpload} />
-              {form.images && form.images[0] && (
-                <div style={{ marginTop: 8 }}>
-                  <span>Selected: {form.images[0].name}</span>
-                  <br />
-                  <img
-                    src={URL.createObjectURL(form.images[0])}
-                    alt="preview"
-                    style={{ maxWidth: 120, marginTop: 8, borderRadius: 8, border: '1px solid #ccc' }}
-                  />
-                  <br />
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger btn-sm"
-                    style={{ marginTop: 8 }}
-                    onClick={() => setForm(prev => ({ ...prev, images: [] }))}
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
-              <small>JPG, PNG up to 10MB each (max 1 image)</small>
-            </div>
-          </div>
-        );
-      case 1:
-        return (
-          <div>
-            <h3>Registration Details</h3>
-            <div className="form-group">
-              <label>License/Registration Number</label>
-              <input name="license" value={form.license} onChange={handleChange} placeholder="e.g., ABC-123-XYZ or 12345678" required />
-            </div>
-            <div className="form-group">
-              <label>Country of Registration</label>
-              <select name="country" value={form.country} onChange={handleChange} required>
-                <option value="">Select country</option>
-                <option value="Morocco">Morocco</option>
-                <option value="USA">USA</option>
-                <option value="France">France</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Year of Registration</label>
-              <select name="year" value={form.year} onChange={handleChange} required>
-                <option value="">Select year</option>
-                {Array.from({ length: 30 }, (_, i) => 2024 - i).map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-            <div className="info-box">
-              <strong>Why do we need this information?</strong>
-              <p>Registration details help us verify equipment ownership and ensure compliance with local regulations. This information is kept secure and only used for verification purposes.</p>
-            </div>
-          </div>
-        );
-      case 2:
-        return (
-          <div>
-            <h3>Business Information</h3>
-            <div className="form-group radio-group">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="isBusiness"
-                  value="false"
-                  checked={form.isBusiness === false}
-                  onChange={() => setForm(f => ({ ...f, isBusiness: false }))}
-                />
-                I am a private owner
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="isBusiness"
-                  value="true"
-                  checked={form.isBusiness === true}
-                  onChange={() => setForm(f => ({ ...f, isBusiness: true }))}
-                />
-                I am a business owner
-              </label>
-            </div>
-            <div className="info-box">
-              Le saviez-vous ? Un loueur professionnel se faisant passer pour un non-professionnel est passible de 2 ans d'emprisonnement et de 300 000 € d'amende pour pratiques commerciales trompeuses.
-            </div>
-          </div>
-        );
-      case 3:
-        return (
-          <div>
-            <h3>Contact Information</h3>
-            <div className="form-group">
-              <label>Contact Name</label>
-              <input name="contactName" value={form.contactName} onChange={handleChange} placeholder="Contact person for this equipment" required />
-            </div>
-            <div className="form-group">
-              <label>Contact Phone</label>
-              <input name="contactPhone" value={form.contactPhone} onChange={handleChange} placeholder="e.g., +212 600 000 000" required />
-            </div>
-          </div>
-        );
-      case 4:
-        // Default Morocco center
-        const moroccoCenter = [31.7917, -7.0926];
-        // If user has set lat/lng, use that
-        const markerPosition = form.lat && form.lng ? [form.lat, form.lng] : moroccoCenter;
-        function LocationMarker() {
-          useMapEvents({
-            click(e) {
-              setForm(f => ({ ...f, lat: e.latlng.lat, lng: e.latlng.lng }));
-              reverseGeocode(e.latlng.lat, e.latlng.lng);
-            },
-          });
-          return form.lat && form.lng ? (
-            <Marker position={[form.lat, form.lng]} icon={L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [32, 32], iconAnchor: [16, 32] })} />
-          ) : null;
-        }
-        return (
-          <div>
-            <h3>Location</h3>
-            <div className="form-group address-autocomplete">
-              <label>Address</label>
-              <div className="input-with-icon">
-                
-                <input
-                  name="address"
-                  value={addressValue}
-                  onChange={handleAddressInput}
-                  placeholder="Type your address or click on the map"
-                  required
-                  autoComplete="off"
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                />
-              </div>
-              {showSuggestions && suggestions.length > 0 && (
-                <ul className="suggestions-dropdown">
-                  {suggestions.map((suggestion) => (
-                    <li key={suggestion.place_id} onClick={() => handleSelectSuggestion(suggestion)}>
-                      <FaMapMarkerAlt className="dropdown-icon" />
-                      {suggestion.display_name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {loadingSuggestions && <div style={{padding:'8px'}}>Loading...</div>}
-            </div>
-            <div className="form-group">
-              <label>City</label>
-              <input name="city" value={form.city} onChange={handleChange} placeholder="City" required />
-            </div>
-            <div className="form-group">
-              <label>State/Province</label>
-              <input name="state" value={form.state} onChange={handleChange} placeholder="State or province" required />
-            </div>
-            <div className="form-group">
-              <label>ZIP/Postal Code</label>
-              <input name="zip" value={form.zip} onChange={handleChange} placeholder="ZIP or postal code" required />
-            </div>
-            <div className="form-group">
-              <label>Set Location on Map</label>
-              <MapContainer
-                center={markerPosition}
-                zoom={6}
-                style={{ height: '260px', width: '100%', borderRadius: '10px', marginBottom: '10px' }}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <LocationMarker />
-                {form.lat && form.lng && (
-                  <Circle center={[form.lat, form.lng]} radius={400} pathOptions={{ color: '#2B5727', fillColor: '#2B5727', fillOpacity: 0.15 }} />
-                )}
-              </MapContainer>
-              <small>Click on the map to set your equipment's location. Renters will see a 400m radius around this point.</small>
-            </div>
-            <div className="info-box">
-              Make sure renters can always find your equipment within 400m of this point. You can update this information later.
-            </div>
-          </div>
-        );
-      case 5:
-        return (
-          <div>
-            <h3>Terms & Conditions</h3>
-            <div className="form-group radio-group">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="termsAccepted"
-                  checked={!!form.termsAccepted}
-                  onChange={() => setForm(f => ({ ...f, termsAccepted: true }))}
-                />
-                I accept the terms and conditions for renting equipment on Agronet.
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="termsAccepted"
-                  checked={!form.termsAccepted}
-                  onChange={() => setForm(f => ({ ...f, termsAccepted: false }))}
-                />
-                I do not accept the terms and conditions.
-              </label>
-            </div>
-            <div className="info-box">
-              <p>Read our <a href="/terms" target="_blank" rel="noopener noreferrer">full terms and conditions</a>.</p>
-            </div>
-          </div>
-        );
-      case 6:
-        // Moroccan agricultural demand pattern (simplified):
-        // High: Mar-May, Jun-Jul, Sep-Oct; Medium: Aug, Nov; Low: Dec-Feb
-        const demandPattern = [
-          Array(20).fill('low'), // Jan
-          Array(20).fill('low'), // Feb
-          Array(20).fill('high'), // Mar
-          Array(20).fill('high'), // Apr
-          Array(20).fill('high'), // May
-          Array(20).fill('high'), // Jun
-          Array(20).fill('high'), // Jul
-          Array(20).fill('medium'), // Aug
-          Array(20).fill('high'), // Sep
-          Array(20).fill('high'), // Oct
-          Array(20).fill('medium'), // Nov
-          Array(20).fill('low'), // Dec
-        ];
-        // Add some variation for realism
-        demandPattern[0][5] = 'medium'; demandPattern[1][10] = 'medium';
-        demandPattern[5][15] = 'very-high'; demandPattern[6][10] = 'very-high';
-        demandPattern[8][2] = 'very-high'; demandPattern[9][18] = 'very-high';
-        return (
-          <div>
-            <h3>Seasonal Demand Overview</h3>
-            <div className="demand-legend">
-              <span className="demand-label low">Low</span>
-              <span className="demand-label medium">Medium</span>
-              <span className="demand-label high">High</span>
-              <span className="demand-label very-high">Very High</span>
-            </div>
-            <div className="seasonal-heatmap">
-              {['January','February','March','April','May','June','July','August','September','October','November','December'].map((month, idx) => (
-                <div key={month} className="month-block">
-                  <div className="month-label">{month}</div>
-                  <div className="month-grid">
-                    {demandPattern[idx].map((demand, i) => (
-                      <span key={i} className={`heat-cell demand-${demand}`}></span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="info-box">This illustration is based on real Moroccan agricultural demand.</div>
-          </div>
-        );
-      case 7:
-        return (
-          <div>
-            <h3>Pricing & Rental Terms</h3>
-            <div className="form-group radio-group">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="pricingType"
-                  checked={form.pricingType !== 'manual'}
-                  onChange={() => setForm(f => ({ ...f, pricingType: 'smart' }))}
-                />
-                Smart Pricing (Recommended)
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="pricingType"
-                  checked={form.pricingType === 'manual'}
-                  onChange={() => setForm(f => ({ ...f, pricingType: 'manual' }))}
-                />
-                Manual Pricing
-              </label>
-            </div>
-            {form.pricingType !== 'manual' ? (
-              <div className="smart-pricing-box smart-pricing-vertical">
-                <div className="smart-pricing-form-col" style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-                  <div className="form-group" style={{maxWidth:200, margin:'0 auto'}}>
-                    <label style={{textAlign: 'center', display: 'block'}}>Minimum Daily Price (MAD)</label>
-                    <div className="min-price-row" style={{justifyContent: 'center'}}>
-                      <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,minPrice:Math.max(0,(parseInt(f.minPrice)||0)-1)}))}>-</button>
-                      <input name="minPrice" type="number" min="0" value={form.minPrice||''} onChange={e=>setForm(f=>({...f,minPrice:e.target.value}))} style={{width:60,textAlign:'center'}} />
-                      <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,minPrice:(parseInt(f.minPrice)||0)+1}))}>+</button>
-                      <span style={{marginLeft:8}}>MAD</span>
-                    </div>
-                  </div>
-                  <div className="info-box" style={{marginTop: '12px'}}>You can change your minimum price at any time.</div>
-                </div>
-              </div>
-            ) : (
-              <div className="manual-pricing-box">
-                {[{label:'Low',key:'low'},{label:'Medium',key:'medium'},{label:'High',key:'high'},{label:'Very High',key:'very-high'}].map(({label,key})=>(
-                  <div className="form-group price-row" key={key}>
-                    <span className={`demand-label ${key}`}>{label}</span>
-                    <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,[`price_${key}`]:Math.max(0,(parseInt(f[`price_${key}`])||0)-1)}))}>-</button>
-                    <input name={`price_${key}`} type="number" min="0" value={form[`price_${key}`]||''} onChange={e=>setForm(f=>({...f,[`price_${key}`]:e.target.value}))} style={{width:60,textAlign:'center'}} />
-                    <button type="button" className="btn btn-outline-secondary" onClick={()=>setForm(f=>({...f,[`price_${key}`]:(parseInt(f[`price_${key}`])||0)+1}))}>+</button>
-                    <span style={{marginLeft:8}}>MAD</span>
-                  </div>
-                ))}
-                <div className="info-box">You can update these prices later.</div>
-              </div>
-            )}
-            <div className="form-group">
-              <label>Minimum Rental Days</label>
-              <input name="minRentalDays" type="number" min="1" value={form.minRentalDays} onChange={handleChange} placeholder="e.g., 2" required />
-            </div>
-            <div className="form-group">
-              <label>Security Deposit (MAD)</label>
-              <input name="deposit" type="number" min="0" value={form.deposit} onChange={handleChange} placeholder="e.g., 100" required />
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="equipment-listing-page">
-      <div className="listing-container">
-        <div className="listing-header">
-          <h2>List Your Equipment</h2>
-          <span className="step-count">Step {step + 1} of {steps.length}</span>
-        </div>
-        <div className="custom-stepper">
-          <div className="progress-bar-bg">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${((step + 1) / steps.length) * 100}%` }}
-            ></div>
-          </div>
-          <div className="step-labels">
-            {steps.map((label, idx) => (
-              <span
-                key={label}
-                className={`step-label${step === idx ? ' active' : ''}${step > idx ? ' completed' : ''}`}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="step-content">
-          {renderStep()}
-        </div>
-        <div className="listing-actions">
-          <button onClick={handlePrev} disabled={step === 0} className="btn btn-outline-secondary me-2">Previous</button>
-          <button onClick={handleSaveDraft} className="btn btn-outline-secondary me-2">Save as Draft</button>
-          <button onClick={handleNext} className="btn btn-success">Continue</button>
-        </div>
-        {draftSaved && <div className="draft-saved-msg">Draft saved!</div>}
-      </div>
-    </div>
-  );
+  return <div className="equipment-listing-page listing-v2"><div className="listing-v2-shell"><aside className="listing-rail"><div><span className="listing-eyebrow">{t('listing.eyebrow')}</span><h1>{isEditMode ? t('listing.editTitle') : t('listing.title')}</h1><p>{isEditMode ? t('listing.editSubtitle') : t('listing.subtitle')}</p></div><nav aria-label="Listing progress">{c.steps.map((label,index) => <button type="button" key={label} className={`${index === step ? 'active' : ''} ${index < step ? 'done' : ''}`} onClick={() => index < step && setStep(index)}><span>{index < step ? <Check size={15} /> : index + 1}</span><strong>{label}</strong></button>)}</nav><div className="listing-trust-card"><ShieldCheck size={24} /><strong>{t('listing.helpTitle')}</strong><small>{t('listing.help1')}</small><small>{t('listing.help2')}</small><small>{t('listing.help3')}</small></div></aside><section className="listing-workspace"><header className="listing-mobile-progress"><span>{t('listing.step',{current:step+1,total:c.steps.length})}</span><strong>{c.steps[step]}</strong><div><i style={{width:`${progress}%`}} /></div></header><div className="listing-step-card">{stepBody}{error && <div className="listing-error" role="alert">{error}</div>}</div><footer className="listing-action-bar"><button type="button" className="listing-back" onClick={() => setStep(value => Math.max(0,value-1))} disabled={step === 0}><ArrowLeft size={18} /> {t('common.previous')}</button><button type="button" className="listing-draft" onClick={saveDraft}><Save size={17} /> {draftSaved ? t('listing.saved') : t('common.saveDraft')}</button>{step < c.steps.length - 1 ? <button type="button" className="listing-next" onClick={goNext}>{t('common.continue')} <ArrowRight size={18} /></button> : <button type="button" className="listing-next" onClick={submit} disabled={submitting}><FileCheck2 size={18} /> {submitting ? '…' : t('common.publish')}</button>}</footer></section></div></div>;
 };
 
-export default ListEquipment; 
+export default ListEquipment;

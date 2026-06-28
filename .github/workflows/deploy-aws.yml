@@ -1,0 +1,45 @@
+name: Deploy to AWS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agronet-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Compose stack over SSH
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_HOST: ${{ secrets.AWS_EC2_HOST }}
+      DEPLOY_USER: ${{ secrets.AWS_EC2_USER }}
+      DEPLOY_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+      APP_PATH: /opt/agronet
+    steps:
+      - name: Verify deployment secrets
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_KEY"
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/agronet
+          chmod 600 ~/.ssh/agronet
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy requested revision
+        run: |
+          ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$APP_PATH' && git fetch origin --prune && git checkout master && git pull --ff-only origin master && docker compose --env-file .env.docker up -d --build --remove-orphans"
+
+      - name: Confirm container health
+        run: |
+          ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$APP_PATH' && docker compose --env-file .env.docker ps"

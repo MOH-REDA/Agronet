@@ -1,0 +1,105 @@
+.user-hub { width: min(1500px, 100%); margin: 0 auto; color: #27342b; }
+.user-hub-hero { padding: 27px 30px; display: flex; align-items: center; justify-content: space-between; gap: 30px; color: #fff; background: radial-gradient(circle at 88% 20%, rgba(132,178,124,.28), transparent 23rem), #23472a; border-radius: 17px; box-shadow: 0 15px 36px rgba(29,66,36,.13); }
+.user-hub-eyebrow { color: #b9d0b7; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.user-hub-hero h1 { margin: 5px 0 5px; color: #fff; font: 700 clamp(28px,3vw,40px)/1.05 'IBM Plex Sans Condensed',sans-serif; }
+.user-hub-hero p { margin: 0; color: #c4d4c2; font-size: 11px; }
+.user-hub-actions { display: flex; gap: 9px; }
+.user-hub-actions a { min-height: 42px; padding: 0 13px; display: inline-flex; align-items: center; gap: 7px; border-radius: 9px; font-size: 10px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.user-hub-actions .primary { color: #285630; background: #f1f6ee; }
+.user-hub-actions .secondary { color: #e2ece0; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); }
+.user-action-banner { margin-top: 15px; padding: 13px 16px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; color: #684a18; background: #fff8e8; border: 1px solid #eedba9; border-radius: 11px; }
+.user-action-banner > span { width: 35px; height: 35px; display: grid; place-items: center; background: #f8eac5; border-radius: 9px; }
+.user-action-banner strong { font-size: 11px; }
+.user-action-banner p { margin: 1px 0 0; color: #816b43; font-size: 9px; }
+.user-action-banner a { display: flex; align-items: center; gap: 5px; color: #73521c; font-size: 9px; font-weight: 800; text-decoration: none; }
+.user-kpi-grid { margin: 17px 0; display: grid; grid-template-columns: repeat(4,1fr); gap: 11px; }
+.user-kpi-card { min-height: 115px; padding: 17px; display: flex; align-items: flex-start; gap: 13px; background: #fff; border: 1px solid #e1e7df; border-radius: 13px; box-shadow: 0 8px 22px rgba(28,49,31,.04); }
+.user-kpi-card > span { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; color: #496f4f; background: #edf3eb; border-radius: 10px; }
+.user-kpi-card.tone-amber > span { color: #8a631f; background: #fff3d8; }
+.user-kpi-card.tone-blue > span { color: #3e6687; background: #eaf2f8; }
+.user-kpi-card > div { display: grid; }
+.user-kpi-card small { color: #7c887f; font-size: 9px; font-weight: 700; }
+.user-kpi-card strong { margin: 2px 0; color: #28372c; font: 700 29px/1 'IBM Plex Sans Condensed',sans-serif; }
+.user-kpi-card p { margin: 0; color: #929b94; font-size: 8px; }
+.user-hub-panel { margin-top: 16px; overflow: hidden; background: #fff; border: 1px solid #dfe6dd; border-radius: 15px; box-shadow: 0 10px 27px rgba(28,49,31,.045); }
+.user-hub-panel > header { padding: 20px 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid #e5eae4; }
+.user-hub-panel > header span { color: #4d7653; font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.user-hub-panel > header h2 { margin: 3px 0; color: #26342a; font-size: 20px; }
+.user-hub-panel > header p { margin: 0; color: #849087; font-size: 9px; }
+.user-hub-panel > header > a { display: inline-flex; align-items: center; gap: 5px; color: #396b41; font-size: 9px; font-weight: 800; text-decoration: none; }
+.user-hub-panel > header > a.panel-primary { padding: 9px 11px; color: #fff; background: #376b40; border-radius: 8px; }
+.user-booking-list { display: grid; }
+.user-booking-card { padding: 17px 21px; display: grid; grid-template-columns: 54px minmax(0,1fr) auto; align-items: center; gap: 17px; border-bottom: 1px solid #e8ece7; transition: background .18s ease; }
+.user-booking-card:last-child { border-bottom: 0; }
+.user-booking-card:hover { background: #fafcfa; }
+.user-booking-date { width: 52px; height: 55px; display: grid; place-items: center; align-content: center; color: #35643d; background: #edf4ea; border-radius: 10px; }
+.user-booking-date strong { font: 700 19px/1 'IBM Plex Sans Condensed',sans-serif; }
+.user-booking-date span { margin-top: 3px; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.user-booking-title { display: flex; align-items: center; gap: 8px; }
+.user-booking-title > span:first-child { color: #89938b; font-size: 8px; font-weight: 700; text-transform: uppercase; }
+.user-booking-main h3 { margin: 5px 0; color: #303e34; font-size: 14px; }
+.user-booking-meta { display: flex; flex-wrap: wrap; gap: 6px 15px; color: #79857c; font-size: 9px; }
+.user-booking-meta span { display: flex; align-items: center; gap: 4px; }
+.user-status-pill { width: fit-content; padding: 4px 7px; display: inline-flex; color: #45654a; background: #edf3eb; border-radius: 999px; font-size: 7px; font-weight: 800; text-transform: uppercase; }
+.user-status-pill.success { color: #2f6a39; background: #e8f5e7; }
+.user-status-pill.attention { color: #79581e; background: #fff1d3; }
+.user-status-pill.danger { color: #94474a; background: #fdeaea; }
+.user-status-pill.progress { color: #3e6381; background: #eaf2f8; }
+.user-booking-side { display: grid; justify-items: end; gap: 8px; }
+.user-payment-state { color: #88938b; font-size: 8px; }
+.user-reservation-actions { display: flex; gap: 6px; }
+.user-reservation-actions button, .user-booking-side > button { padding: 7px 9px; border-radius: 7px; font-size: 8px; font-weight: 800; }
+.positive { color: #fff; background: #397043; border: 1px solid #397043; }
+.positive.outline { color: #356a3e; background: #fff; }
+.negative { color: #91474a; background: #fff; border: 1px solid #e4bfc1; }
+.user-no-action { color: #969f98; font-size: 8px; }
+.user-review-score { color: #387042; font-size: 9px; font-weight: 800; }
+.user-equipment-grid { padding: 17px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 13px; }
+.user-equipment-card { overflow: hidden; background: #fff; border: 1px solid #dfe6dd; border-radius: 12px; }
+.user-equipment-image { position: relative; height: 165px; display: block; overflow: hidden; background: #e8eee5; }
+.user-equipment-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.user-equipment-card:hover .user-equipment-image img { transform: scale(1.03); }
+.user-equipment-image .user-status-pill { position: absolute; top: 10px; right: 10px; }
+.user-equipment-copy { padding: 14px; }
+.user-equipment-copy > span { color: #6f8873; font-size: 7px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.user-equipment-copy h3 { margin: 4px 0 10px; font-size: 14px; }
+.user-equipment-copy h3 a { color: #303e34; text-decoration: none; }
+.user-equipment-copy > div { display: flex; align-items: baseline; gap: 4px; }
+.user-equipment-copy strong { color: #32683b; font-size: 12px; }
+.user-equipment-copy small, .user-equipment-copy p { color: #89938b; font-size: 8px; }
+.user-equipment-copy p { margin: 5px 0 0; }
+.user-equipment-actions { padding: 10px 13px; display: flex; justify-content: space-between; border-top: 1px solid #e6ebe5; }
+.user-equipment-actions a, .user-equipment-actions button { padding: 0; display: flex; align-items: center; gap: 5px; color: #536159; background: transparent; border: 0; font-size: 8px; font-weight: 800; text-decoration: none; }
+.user-equipment-actions button { color: #9b4c50; }
+.user-empty-state { padding: 48px 20px; display: grid; justify-items: center; text-align: center; }
+.user-empty-state > span { width: 50px; height: 50px; display: grid; place-items: center; color: #4a7650; background: #edf4ea; border-radius: 50%; }
+.user-empty-state h3 { margin: 13px 0 5px; font-size: 15px; }
+.user-empty-state p { max-width: 420px; margin: 0 0 13px; color: #818c84; font-size: 9px; }
+.user-empty-state a { display: flex; align-items: center; gap: 5px; color: #356a3e; font-size: 9px; font-weight: 800; text-decoration: none; }
+@media (max-width:1050px){.user-kpi-grid{grid-template-columns:1fr 1fr}.user-equipment-grid{grid-template-columns:1fr 1fr}.user-booking-card{grid-template-columns:54px 1fr}.user-booking-side{grid-column:2;justify-items:start}}
+@media (max-width:650px){.user-hub-hero{align-items:flex-start;flex-direction:column}.user-hub-actions{width:100%}.user-hub-actions a{flex:1}.user-kpi-grid{grid-template-columns:1fr 1fr}.user-kpi-card{padding:13px}.user-hub-panel>header{align-items:flex-start;flex-direction:column}.user-booking-card{grid-template-columns:45px 1fr;padding:14px}.user-booking-date{width:44px}.user-booking-meta{display:grid}.user-equipment-grid{grid-template-columns:1fr}.user-action-banner{grid-template-columns:auto 1fr}.user-action-banner>a{grid-column:2}}
+
+/* Readability pass */
+.user-hub-eyebrow { font-size: 11px; }
+.user-hub-hero p { font-size: 13px; }
+.user-hub-actions a { font-size: 12px; }
+.user-action-banner strong { font-size: 13px; }
+.user-action-banner p, .user-action-banner a { font-size: 11px; }
+.user-kpi-card small { font-size: 11px; }
+.user-kpi-card p { font-size: 10px; }
+.user-hub-panel > header span { font-size: 10px; }
+.user-hub-panel > header p, .user-hub-panel > header > a { font-size: 11px; }
+.user-booking-date span, .user-booking-title > span:first-child { font-size: 10px; }
+.user-booking-main h3 { font-size: 16px; }
+.user-booking-meta { font-size: 11px; }
+.user-status-pill { font-size: 9px; }
+.user-payment-state { font-size: 10px; }
+.user-reservation-actions button, .user-booking-side > button { font-size: 10px; }
+.user-no-action, .user-review-score { font-size: 10px; }
+.user-equipment-copy > span { font-size: 9px; }
+.user-equipment-copy h3 { font-size: 16px; }
+.user-equipment-copy strong { font-size: 14px; }
+.user-equipment-copy small, .user-equipment-copy p { font-size: 10px; }
+.user-equipment-actions a, .user-equipment-actions button { font-size: 10px; }
+.user-empty-state h3 { font-size: 17px; }
+.user-empty-state p, .user-empty-state a { font-size: 11px; }

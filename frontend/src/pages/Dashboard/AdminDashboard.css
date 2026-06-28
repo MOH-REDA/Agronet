@@ -1,0 +1,645 @@
+.admin-ops-page {
+  color: #26332a;
+}
+
+.admin-ops-hero {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.admin-ops-eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: #47734e;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-ops-hero h1 {
+  margin: 0;
+  color: #17251b;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.1;
+}
+
+.admin-ops-hero p {
+  margin: 7px 0 0;
+  color: #6b776e;
+  font-size: 14px;
+}
+
+.admin-ops-refresh-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-ops-refresh-wrap small {
+  color: #89928b;
+  font-size: 11px;
+}
+
+.admin-ops-refresh-wrap button {
+  min-height: 40px;
+  padding: 8px 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #34573a;
+  background: #fff;
+  border: 1px solid #d3ddd3;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-ops-refresh-wrap button:hover {
+  background: #f3f7f2;
+  border-color: #aebfae;
+}
+
+.admin-ops-refresh-wrap button:disabled {
+  opacity: 0.65;
+}
+
+.spinning {
+  animation: admin-spin 0.8s linear infinite;
+}
+
+@keyframes admin-spin {
+  to { transform: rotate(360deg); }
+}
+
+.admin-loading-state {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #647068;
+}
+
+.admin-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid #dfe7de;
+  border-top-color: #2f6b38;
+  border-radius: 50%;
+  animation: admin-spin 0.8s linear infinite;
+}
+
+.admin-alert {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.admin-alert-error {
+  color: #852c28;
+  background: #fff1ef;
+  border: 1px solid #efc7c2;
+}
+
+.admin-alert button {
+  margin-left: auto;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font-weight: 700;
+}
+
+.admin-kpi-grid {
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-kpi-card {
+  min-height: 112px;
+  padding: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  background: #fff;
+  border: 1px solid #dce3dc;
+  border-radius: 12px;
+  box-shadow: 0 5px 16px rgba(29, 49, 32, 0.045);
+}
+
+.admin-kpi-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #44664a;
+  background: #edf3ec;
+  border-radius: 9px;
+}
+
+.admin-kpi-card > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-kpi-card > div > span {
+  color: #68746b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-kpi-card strong {
+  margin-top: 2px;
+  color: #1c2e20;
+  font-family: var(--font-heading);
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.admin-kpi-card small {
+  margin-top: 5px;
+  color: #7b867e;
+  font-size: 10px;
+}
+
+.admin-kpi-card.tone-urgent {
+  border-color: #e6bf83;
+  background: #fffdf8;
+}
+
+.admin-kpi-card.tone-urgent .admin-kpi-icon,
+.admin-kpi-card.tone-warning .admin-kpi-icon {
+  color: #8b5b16;
+  background: #fff1d5;
+}
+
+.admin-kpi-card.tone-positive .admin-kpi-icon {
+  color: #2e7040;
+  background: #e6f3e7;
+}
+
+.admin-ops-section {
+  margin-bottom: 20px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dce3dc;
+  border-radius: 12px;
+  box-shadow: 0 5px 18px rgba(29, 49, 32, 0.045);
+}
+
+.admin-ops-section.priority {
+  border-color: #d7c18f;
+  box-shadow: 0 7px 24px rgba(91, 72, 28, 0.08);
+}
+
+.admin-ops-section.danger {
+  border-color: #e4b7b2;
+}
+
+.admin-ops-section > header {
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  background: #fbfcfa;
+  border-bottom: 1px solid #e6ebe5;
+}
+
+.admin-ops-section.priority > header {
+  background: linear-gradient(90deg, #fffaf0, #fbfcfa 58%);
+}
+
+.admin-ops-section.danger > header {
+  background: #fff8f7;
+}
+
+.admin-section-icon {
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #3e6946;
+  background: #e8f0e7;
+  border-radius: 8px;
+}
+
+.priority .admin-section-icon {
+  color: #8a5c19;
+  background: #ffedc9;
+}
+
+.danger .admin-section-icon {
+  color: #9b362f;
+  background: #f9dfdc;
+}
+
+.admin-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-section-title-row h2 {
+  margin: 0;
+  color: #233127;
+  font-size: 18px;
+}
+
+.admin-section-count {
+  min-width: 21px;
+  height: 21px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #456049;
+  background: #e7ede6;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.admin-ops-section header p {
+  margin: 3px 0 0;
+  color: #748078;
+  font-size: 12px;
+}
+
+.admin-section-body {
+  min-width: 0;
+}
+
+.admin-ops-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-table-scroll {
+  overflow-x: auto;
+}
+
+.admin-ops-table {
+  width: 100%;
+  min-width: 870px;
+  margin: 0;
+  border-collapse: collapse;
+}
+
+.admin-ops-table th {
+  padding: 10px 14px;
+  color: #7b867e;
+  background: #fff;
+  border-bottom: 1px solid #e9ede8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-ops-table td {
+  padding: 14px;
+  color: #435048;
+  border-bottom: 1px solid #edf0ed;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.admin-ops-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-ops-table tbody tr:hover {
+  background: #fbfcfa;
+}
+
+.admin-ops-table td strong,
+.admin-ops-table td small {
+  display: block;
+}
+
+.admin-ops-table td strong {
+  color: #28362c;
+  font-size: 12px;
+}
+
+.admin-ops-table td small {
+  margin-top: 3px;
+  color: #879089;
+  font-size: 10px;
+}
+
+.admin-status-badge {
+  width: max-content;
+  padding: 5px 8px;
+  display: inline-flex;
+  color: #4e5e52;
+  background: #edf1ed;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-status-badge.status-owner_accepted,
+.admin-status-badge.status-scheduled,
+.admin-status-badge.status-in_progress {
+  color: #276138;
+  background: #e4f2e5;
+}
+
+.admin-status-badge.status-payment_submitted,
+.admin-status-badge.status-owner_completed {
+  color: #785015;
+  background: #fff0d0;
+}
+
+.admin-status-badge.status-disputed,
+.admin-status-badge.status-cancelled,
+.admin-status-badge.status-rejected {
+  color: #913a32;
+  background: #fae6e3;
+}
+
+.admin-stage-help {
+  max-width: 180px;
+  margin-top: 5px !important;
+  color: #8a6a31 !important;
+  line-height: 1.3;
+}
+
+.admin-primary-action {
+  min-height: 38px;
+  padding: 8px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #fff;
+  background: #2b6c37;
+  border: 1px solid #2b6c37;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-primary-action:hover:not(:disabled) {
+  background: #21582b;
+}
+
+.admin-primary-action:disabled {
+  color: #8b7a5b;
+  background: #f5eee0;
+  border-color: #e6d7b9;
+  cursor: not-allowed;
+}
+
+.admin-document-actions,
+.admin-verification-actions { display: flex; align-items: center; gap: 6px; }
+.admin-document-actions button { padding: 6px 8px; color: #315f39; background: #edf4ec; border: 1px solid #cad9c9; border-radius: 6px; font-size: 10px; font-weight: 700; }
+.admin-verification-actions button { min-height: 34px; padding: 6px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; }
+.admin-verification-actions .reject { color: #913b33; background: #fff; border: 1px solid #e3b5b0; }
+.admin-verification-actions .approve { color: #fff; background: #2b6c37; border: 1px solid #2b6c37; }
+
+.admin-review-label {
+  color: #9a3c35;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-booking-list {
+  display: grid;
+}
+
+.admin-booking-item {
+  min-width: 0;
+  padding: 13px 16px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #e9ede8;
+}
+
+.admin-booking-item:last-child {
+  border-bottom: 0;
+}
+
+.admin-booking-id {
+  color: #879089;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-booking-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-booking-copy strong {
+  overflow: hidden;
+  color: #2c3a30;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-booking-copy span {
+  overflow: hidden;
+  margin-top: 2px;
+  color: #7b867e;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-empty-state {
+  min-height: 86px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #738078;
+  font-size: 12px;
+}
+
+.admin-empty-state svg {
+  color: #579060;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 29, 19, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.admin-payout-modal {
+  position: relative;
+  width: min(100%, 450px);
+  padding: 26px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(16, 29, 19, 0.26);
+}
+
+.admin-modal-close {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6e7971;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.admin-modal-icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #326b3c;
+  background: #e8f2e7;
+  border-radius: 10px;
+}
+
+.admin-payout-modal h2 {
+  margin: 14px 0 6px;
+  color: #203026;
+  font-size: 22px;
+}
+
+.admin-payout-modal p {
+  margin: 0 0 18px;
+  color: #68736b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-payout-modal label {
+  display: grid;
+  gap: 6px;
+  color: #465249;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-payout-modal input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  color: #29352c;
+  border: 1px solid #ced8ce;
+  border-radius: 8px;
+  outline: 0;
+}
+
+.admin-payout-modal input:focus {
+  border-color: #6f9875;
+  box-shadow: 0 0 0 3px rgba(49, 108, 60, 0.12);
+}
+
+.admin-modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-modal-actions button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-modal-actions .secondary {
+  color: #5c685f;
+  background: #fff;
+  border: 1px solid #d5ddd5;
+}
+
+.admin-modal-actions .primary {
+  color: #fff;
+  background: #296735;
+  border: 1px solid #296735;
+}
+
+.admin-modal-actions .primary:disabled {
+  opacity: 0.55;
+}
+
+@media (max-width: 1100px) {
+  .admin-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-ops-two-column {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-ops-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-ops-refresh-wrap {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-booking-item {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .admin-booking-item .admin-status-badge {
+    grid-column: 2;
+  }
+}
+
+/* Readability pass */
+.admin-ops-eyebrow, .admin-ops-refresh-wrap small { font-size: 12px; }
+.admin-kpi-card span, .admin-kpi-card small { font-size: 12px; }
+.admin-ops-section header p, .admin-stage-help { font-size: 12px; }
+.admin-ops-table th { font-size: 11px; }
+.admin-ops-table td, .admin-ops-table td small { font-size: 12px; }
+.admin-status-badge, .admin-review-label { font-size: 11px; }
+.admin-document-actions button, .admin-verification-actions button, .admin-primary-action { font-size: 12px; }
