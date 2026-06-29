@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AgroNet presentation infrastructure - EC2, RDS MySQL, ECR, and CloudWatch.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: agronet
+    AllowedPattern: '[a-z0-9-]+'
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Existing EC2 key pair used for SSH deployment.
+  SSHLocation:
+    Type: String
+    Description: Your public IP in CIDR form, for example 203.0.113.10/32.
+    AllowedPattern: '(\d{1,3}\.){3}\d{1,3}/\d{1,2}'
+  DBName:
+    Type: String
+    Default: agronet
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+  DBUsername:
+    Type: String
+    Default: agronet
+    MinLength: 4
+    MaxLength: 16
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    MaxLength: 41
+  InstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues: [t3.micro, t3.small, t3.medium]
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+    Description: AWS Academy normally provides LabInstanceProfile. Leave blank if unavailable.
+  LatestUbuntuAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+
+Conditions:
+  HasInstanceProfile: !Not [!Equals [!Ref InstanceProfileName, '']]
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.30.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-vpc'}]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-igw'}]
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  AppSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.30.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-app-public'}]
+
+  DBSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.30.11.0/24
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-db-a'}]
+
+  DBSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.30.12.0/24
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-db-b'}]
+
+  AppRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-public-routes'}]
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref AppRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  AppRouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppSubnet
+      RouteTableId: !Ref AppRouteTable
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: AgroNet web and restricted SSH access
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - {IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP}
+        - {IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref SSHLocation, Description: Restricted SSH}
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-app-sg'}]
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MySQL only from the AgroNet application
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref AppSecurityGroup
+          Description: MySQL from EC2
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-db-sg'}]
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for AgroNet RDS
+      SubnetIds: [!Ref DBSubnetA, !Ref DBSubnetB]
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-db-subnets'}]
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-mysql'
+      Engine: mysql
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 30
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups: [!Ref DBSecurityGroup]
+      PubliclyAccessible: false
+      MultiAZ: false
+      BackupRetentionPeriod: 1
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: false
+      Tags: [{Key: Project, Value: !Ref ProjectName}]
+
+  BackendRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-backend'
+      ImageScanningConfiguration: {ScanOnPush: true}
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Keep the five newest images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}'
+
+  FrontendRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-frontend'
+      ImageScanningConfiguration: {ScanOnPush: true}
+      ImageTagMutability: MUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"Keep the five newest images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}'
+
+  ApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/agronet/${ProjectName}/docker'
+      RetentionInDays: 7
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: DefaultRoute
+    Properties:
+      ImageId: !Ref LatestUbuntuAmiId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !If
+        - HasInstanceProfile
+        - {Name: !Ref InstanceProfileName}
+        - !Ref AWS::NoValue
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: '0'
+          GroupSet: [!Ref AppSecurityGroup]
+          SubnetId: !Ref AppSubnet
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: {VolumeSize: 20, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true}
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2 curl git
+          systemctl enable --now docker
+          usermod -aG docker ubuntu
+          install -d -o ubuntu -g ubuntu -m 750 /opt/agronet
+
+          curl -fsSL -o /tmp/amazon-cloudwatch-agent.deb \
+            https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+          dpkg -i /tmp/amazon-cloudwatch-agent.deb
+          cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'JSON'
+          {
+            "agent": {"metrics_collection_interval": 60, "run_as_user": "root"},
+            "metrics": {"append_dimensions": {"InstanceId": "${!aws:InstanceId}"}, "metrics_collected": {"disk": {"measurement": ["used_percent"], "resources": ["/"]}, "mem": {"measurement": ["mem_used_percent"]}}},
+            "logs": {"logs_collected": {"files": {"collect_list": [{"file_path": "/var/lib/docker/containers/*/*.log", "log_group_name": "${ApplicationLogGroup}", "log_stream_name": "{instance_id}/docker", "timezone": "UTC"}]}}}
+          }
+          JSON
+          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+            -a fetch-config -m ec2 \
+            -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s || true
+      Tags:
+        - {Key: Name, Value: !Sub '${ProjectName}-app'}
+        - {Key: Project, Value: !Ref ProjectName}
+
+  AppElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags: [{Key: Name, Value: !Sub '${ProjectName}-public-ip'}]
+
+  AppElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt AppElasticIP.AllocationId
+      InstanceId: !Ref AppInstance
+
+Outputs:
+  ApplicationIP:
+    Value: !Ref AppElasticIP
+  ApplicationURL:
+    Value: !Sub 'http://${AppElasticIP}'
+  InstanceId:
+    Value: !Ref AppInstance
+  RDSEndpoint:
+    Value: !GetAtt Database.Endpoint.Address
+  BackendRepositoryURI:
+    Value: !GetAtt BackendRepository.RepositoryUri
+  FrontendRepositoryURI:
+    Value: !GetAtt FrontendRepository.RepositoryUri
+  LogGroupName:
+    Value: !Ref ApplicationLogGroup

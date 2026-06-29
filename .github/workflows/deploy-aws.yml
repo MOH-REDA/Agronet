@@ -1,7 +1,12 @@
-name: Deploy to AWS
+name: Publish and Deploy to AWS
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to deploy (defaults to this commit SHA)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -11,35 +16,108 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy Compose stack over SSH
+  publish-and-deploy:
+    name: ECR publish and EC2 deployment
     runs-on: ubuntu-latest
     environment: production
     env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
       DEPLOY_HOST: ${{ secrets.AWS_EC2_HOST }}
       DEPLOY_USER: ${{ secrets.AWS_EC2_USER }}
       DEPLOY_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
       APP_PATH: /opt/agronet
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
       - name: Verify deployment secrets
+        shell: bash
         run: |
+          test -n "$AWS_REGION"
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
           test -n "$DEPLOY_KEY"
 
+      - name: Configure temporary AWS Lab credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          mask-aws-account-id: true
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/agronet-backend:${{ env.IMAGE_TAG }}
+            ${{ steps.ecr.outputs.registry }}/agronet-backend:latest
+          cache-from: type=gha,scope=aws-backend
+          cache-to: type=gha,mode=max,scope=aws-backend
+
+      - name: Build and publish frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/agronet-frontend:${{ env.IMAGE_TAG }}
+            ${{ steps.ecr.outputs.registry }}/agronet-frontend:latest
+          build-args: |
+            VITE_API_URL=/api
+            VITE_STORAGE_URL=/storage
+          cache-from: type=gha,scope=aws-frontend
+          cache-to: type=gha,mode=max,scope=aws-frontend
+
       - name: Configure SSH
+        shell: bash
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/agronet
           chmod 600 ~/.ssh/agronet
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
-      - name: Deploy requested revision
+      - name: Install production Compose definition
+        shell: bash
         run: |
-          ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$APP_PATH' && git fetch origin --prune && git checkout master && git pull --ff-only origin master && docker compose --env-file .env.docker up -d --build --remove-orphans"
+          ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$APP_PATH'"
+          scp -i ~/.ssh/agronet compose.production.yaml "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/compose.production.yaml"
 
-      - name: Confirm container health
+      - name: Authenticate EC2 Docker to ECR
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" |
+            ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
+              "docker login --username AWS --password-stdin '$ECR_REGISTRY'"
+
+      - name: Deploy immutable image revision
+        shell: bash
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
           ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$APP_PATH' && docker compose --env-file .env.docker ps"
+            "cd '$APP_PATH' && test -f .env.aws && \
+             ECR_REGISTRY='$ECR_REGISTRY' IMAGE_TAG='$IMAGE_TAG' \
+             docker compose --env-file .env.aws -f compose.production.yaml pull && \
+             ECR_REGISTRY='$ECR_REGISTRY' IMAGE_TAG='$IMAGE_TAG' \
+             docker compose --env-file .env.aws -f compose.production.yaml up -d --remove-orphans"
+
+      - name: Confirm production health
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$APP_PATH' && docker compose --env-file .env.aws -f compose.production.yaml ps && \
+             curl --fail --retry 12 --retry-delay 5 http://127.0.0.1/health"
