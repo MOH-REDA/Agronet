@@ -194,7 +194,7 @@ Resources:
       KeyName: !Ref KeyName
       IamInstanceProfile: !If
         - HasInstanceProfile
-        - {Name: !Ref InstanceProfileName}
+        - !Ref InstanceProfileName
         - !Ref AWS::NoValue
       NetworkInterfaces:
         - AssociatePublicIpAddress: true

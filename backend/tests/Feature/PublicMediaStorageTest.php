@@ -31,3 +31,7 @@ it('preserves remote media urls and normalizes legacy local paths', function () 
         ->and($media->publicUrl('equipment/tractor.jpg', 'equipment'))->toBe('/storage/equipment/tractor.jpg')
         ->and($media->publicUrl('tractor.jpg', 'equipment'))->toBe('/storage/equipment/tractor.jpg');
 });
+
+it('refuses a media migration when cloudinary is not configured', function () {
+    $this->artisan('media:migrate-cloudinary')->assertFailed();
+});

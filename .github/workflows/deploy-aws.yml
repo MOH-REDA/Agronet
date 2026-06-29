@@ -60,6 +60,9 @@ jobs:
         with:
           context: backend
           push: true
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
           tags: |
             ${{ steps.ecr.outputs.registry }}/agronet-backend:${{ env.IMAGE_TAG }}
             ${{ steps.ecr.outputs.registry }}/agronet-backend:latest
@@ -71,6 +74,9 @@ jobs:
         with:
           context: frontend
           push: true
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
           tags: |
             ${{ steps.ecr.outputs.registry }}/agronet-frontend:${{ env.IMAGE_TAG }}
             ${{ steps.ecr.outputs.registry }}/agronet-frontend:latest
