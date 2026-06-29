@@ -33,7 +33,7 @@ services:
       FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET:-}
       FACEBOOK_REDIRECT_URI: ${FACEBOOK_REDIRECT_URI}
     volumes:
-      - verification_uploads:/var/www/html/storage/app/private/verifications
+      - verification_uploads:/app/storage/app/private/verifications
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/up') === false ? 1 : 0);"]
       interval: 10s
@@ -51,8 +51,6 @@ services:
   frontend:
     image: ${ECR_REGISTRY}/agronet-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -70,8 +68,34 @@ services:
     networks:
       - agronet
 
+  edge:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-agro-net.app}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - agronet
+
 volumes:
   verification_uploads:
+  caddy_data:
+  caddy_config:
 
 networks:
   agronet:

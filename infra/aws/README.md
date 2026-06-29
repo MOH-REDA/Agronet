@@ -51,7 +51,7 @@ scp -i PATH_TO_KEY.pem .env.aws ubuntu@EC2_PUBLIC_IP:/tmp/.env.aws
 ssh -i PATH_TO_KEY.pem ubuntu@EC2_PUBLIC_IP "sudo mv /tmp/.env.aws /opt/agronet/.env.aws && sudo chown ubuntu:ubuntu /opt/agronet/.env.aws && chmod 600 /opt/agronet/.env.aws"
 ```
 
-The `APP_URL`, Google callback, and Facebook callback must use the EC2 public URL. Copy the existing local Cloudinary URL into this file. Do not expose RDS publicly.
+Set `APP_DOMAIN` to the production hostname. The `APP_URL`, Google callback, and Facebook callback must use its HTTPS URL. Copy the existing local Cloudinary URL into this file. Do not expose RDS publicly.
 
 Generate a production Laravel key locally without revealing it:
 
@@ -90,6 +90,7 @@ Open GitHub Actions and manually run **Publish and Deploy to AWS**. The workflow
 - ECR scans images on push and retains only five revisions.
 - CloudWatch keeps seven days of container logs and system metrics.
 - Cloudinary separates public media from compute, making EC2 replacement safe.
+- Caddy provisions and renews the public TLS certificate automatically, while HTTP redirects to HTTPS.
 - GitHub Actions provides repeatable CI/CD with a health-checked deployment.
 
 Delete the CloudFormation stack after the presentation if the lab credits no longer need to preserve the environment. RDS deletion creates a final snapshot by policy.

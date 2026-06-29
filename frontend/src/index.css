@@ -10,6 +10,10 @@
   --font-heading: 'IBM Plex Sans Condensed', 'IBM Plex Sans', Arial, sans-serif;
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
   font-family: var(--font-ui);
   font-size: 15px;
@@ -78,4 +82,15 @@ code {
   max-width: none;
   padding-right: clamp(1rem, 2vw, 2rem);
   padding-left: clamp(1rem, 2vw, 2rem);
+}
+
+/* Keep wide desktop screens comfortably dense without browser-zoom hacks. */
+@media (min-width: 1280px) {
+  html {
+    font-size: 15px;
+  }
+
+  body {
+    font-size: 14px;
+  }
 }

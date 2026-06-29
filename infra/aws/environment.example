@@ -4,7 +4,8 @@ ECR_REGISTRY=123456789012.dkr.ecr.us-east-1.amazonaws.com
 IMAGE_TAG=latest
 
 APP_KEY=base64:GENERATE_WITH_PHP_ARTISAN_KEY_GENERATE_SHOW
-APP_URL=http://YOUR_EC2_PUBLIC_IP
+APP_DOMAIN=agro-net.app
+APP_URL=https://agro-net.app
 LOG_LEVEL=warning
 RUN_MIGRATIONS=true
 
@@ -20,7 +21,7 @@ OPENROUTER_MODEL=openrouter/free
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URI=http://YOUR_EC2_PUBLIC_IP/api/auth/google/callback
+GOOGLE_REDIRECT_URI=https://agro-net.app/api/auth/google/callback
 FACEBOOK_CLIENT_ID=
 FACEBOOK_CLIENT_SECRET=
-FACEBOOK_REDIRECT_URI=http://YOUR_EC2_PUBLIC_IP/api/auth/facebook/callback
+FACEBOOK_REDIRECT_URI=https://agro-net.app/api/auth/facebook/callback

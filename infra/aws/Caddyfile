@@ -1,0 +1,12 @@
+{
+	admin off
+}
+
+{$APP_DOMAIN:agro-net.app} {
+	encode zstd gzip
+	reverse_proxy frontend:80
+}
+
+www.{$APP_DOMAIN:agro-net.app} {
+	redir https://{$APP_DOMAIN:agro-net.app}{uri} permanent
+}

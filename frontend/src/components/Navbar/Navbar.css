@@ -399,14 +399,32 @@
   border: 1px solid #d8e4d7;
   border-radius: 50%;
   cursor: pointer;
-  transition: background-color 0.16s ease, border-color 0.16s ease;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
-.notif-bell-btn:hover,
-.notif-bell-btn[aria-expanded="true"] {
+.notif-bell-btn:hover {
   color: #163d1c;
   background: #e7f0e5;
   border-color: #b8cfb7;
+}
+
+.notif-bell-btn[aria-expanded="true"] {
+  color: #fff;
+  background: #2f6739;
+  border-color: #2f6739;
+  box-shadow: 0 7px 16px rgba(34, 86, 44, 0.2);
+}
+
+.notif-bell-btn > svg {
+  transition: transform 0.18s ease;
+}
+
+.notif-bell-btn[aria-expanded="true"] > svg {
+  transform: rotate(-8deg) scale(0.94);
+}
+
+.notif-bell-btn[aria-expanded="true"] .notif-count {
+  border-color: #2f6739;
 }
 
 .notif-bell-btn:focus-visible,

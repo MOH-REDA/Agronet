@@ -99,6 +99,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$APP_PATH'"
           scp -i ~/.ssh/agronet compose.production.yaml "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/compose.production.yaml"
+          scp -i ~/.ssh/agronet infra/aws/Caddyfile "$DEPLOY_USER@$DEPLOY_HOST:$APP_PATH/Caddyfile"
 
       - name: Authenticate EC2 Docker to ECR
         shell: bash
@@ -126,4 +127,4 @@ jobs:
         run: |
           ssh -i ~/.ssh/agronet "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd '$APP_PATH' && docker compose --env-file .env.aws -f compose.production.yaml ps && \
-             curl --fail --retry 12 --retry-delay 5 http://127.0.0.1/health"
+             curl --fail --retry 12 --retry-delay 5 https://agro-net.app/health"
