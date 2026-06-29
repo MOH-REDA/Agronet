@@ -41,6 +41,10 @@ return [
         'url' => env('OPENROUTER_URL', 'https://openrouter.ai/api/v1/chat/completions'),
     ],
 
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PublicMediaStorage;
 use App\Models\Equipment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 class EquipmentAdvisorController extends Controller
 {
+    public function __construct(private readonly PublicMediaStorage $media) {}
+
     private const BLOCKING_STATUSES = [
         'pending', 'requested', 'owner_accepted', 'awaiting_payment', 'payment_submitted',
         'scheduled', 'in_progress', 'paid', 'active', 'owner_completed',
@@ -240,11 +243,9 @@ class EquipmentAdvisorController extends Controller
 
     private function publicEquipment(Equipment $equipment): array
     {
-        $images = collect($equipment->images ?? [])->map(function ($image) {
-            $image = ltrim($image, '/');
-            if (str_starts_with($image, 'storage/')) return $image;
-            return str_starts_with($image, 'equipment/') ? 'storage/' . $image : 'storage/equipment/' . $image;
-        })->values()->all();
+        $images = collect($equipment->images ?? [])
+            ->map(fn ($image) => $this->media->publicUrl($image, 'equipment'))
+            ->filter()->values()->all();
 
         return [
             'id' => $equipment->id,

@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PublicMediaStorage;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly PublicMediaStorage $media) {}
+
     public function register(Request $request)
     {
         $validated = $request->validate([
@@ -35,7 +37,7 @@ class AuthController extends Controller
 
         if ($request->hasFile('avatar')) {
             $user->update([
-                'avatar_path' => $request->file('avatar')->store("avatars/{$user->id}", 'public'),
+                'avatar_path' => $this->media->upload($request->file('avatar'), "avatars/{$user->id}"),
             ]);
         }
 
@@ -165,11 +167,11 @@ class AuthController extends Controller
         $user = $request->user();
 
         if ($user->avatar_path) {
-            Storage::disk('public')->delete($user->avatar_path);
+            $this->media->delete($user->avatar_path);
         }
 
         $user->update([
-            'avatar_path' => $request->file('avatar')->store("avatars/{$user->id}", 'public'),
+            'avatar_path' => $this->media->upload($request->file('avatar'), "avatars/{$user->id}"),
         ]);
 
         return response()->json([

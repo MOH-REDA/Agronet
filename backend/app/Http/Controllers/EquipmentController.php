@@ -6,13 +6,15 @@ use App\Models\Equipment;
 use App\Models\EquipmentReservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use App\Models\User;
+use App\Services\PublicMediaStorage;
 
 class EquipmentController extends Controller
 {
+    public function __construct(private readonly PublicMediaStorage $media) {}
+
     // GET /api/equipment
     public function index(Request $request)
     {
@@ -93,17 +95,9 @@ class EquipmentController extends Controller
         $equipment = $query->paginate($perPage);
         $equipment->getCollection()->transform(function ($item) {
             // Normalize image paths
-            $item->images = collect($item->images ?? [])->map(function($img) {
-                $img = ltrim($img, '/');
-                if (!str_starts_with($img, 'storage/equipment/')) {
-                    if (str_starts_with($img, 'equipment/')) {
-                        $img = 'storage/' . $img;
-                    } else {
-                        $img = 'storage/equipment/' . $img;
-                    }
-                }
-                return $img;
-            })->toArray();
+            $item->images = collect($item->images ?? [])
+                ->map(fn ($img) => $this->media->publicUrl($img, 'equipment'))
+                ->filter()->values()->toArray();
             $item->distance = null;
             $today = Carbon::today();
             $currentReservation = $item->reservations->first(fn ($reservation) =>
@@ -296,9 +290,7 @@ class EquipmentController extends Controller
                 if ($request->hasFile("images.$idx")) {
                     $file = $request->file("images.$idx");
                     if ($file && $file->isValid()) {
-                        $path = $file->store('equipment', 'public');
-                        // Always store as /storage/equipment/filename.ext
-                        $imageUrls[] = '/storage/' . ltrim($path, '/');
+                        $imageUrls[] = $this->media->upload($file, 'equipment');
                     }
                 } elseif (is_string($img)) {
                     // If it's a URL, store as-is
@@ -344,17 +336,9 @@ class EquipmentController extends Controller
                 ];
             })->toArray();
         // Normalize image paths
-        $images = collect($equipment->images ?? [])->map(function($img) {
-            $img = ltrim($img, '/');
-            if (!str_starts_with($img, 'storage/equipment/')) {
-                if (str_starts_with($img, 'equipment/')) {
-                    $img = 'storage/' . $img;
-                } else {
-                    $img = 'storage/equipment/' . $img;
-                }
-            }
-            return $img;
-        })->toArray();
+        $images = collect($equipment->images ?? [])
+            ->map(fn ($img) => $this->media->publicUrl($img, 'equipment'))
+            ->filter()->values()->toArray();
         $equipmentArr = $equipment->toArray();
         $equipmentArr['images'] = $images;
         $equipmentArr['reserved_dates'] = $reserved_dates;
@@ -477,8 +461,7 @@ class EquipmentController extends Controller
                 if ($request->hasFile("images.$idx")) {
                     $file = $request->file("images.$idx");
                     if ($file && $file->isValid()) {
-                        $path = $file->store('equipment', 'public');
-                        $imageUrls[] = '/storage/' . ltrim($path, '/');
+                        $imageUrls[] = $this->media->upload($file, 'equipment');
                     }
                 } elseif (is_string($img)) {
                     $imageUrls[] = $img;
@@ -496,10 +479,7 @@ class EquipmentController extends Controller
         if (!empty($imageUrls)) {
             if (is_array($equipment->images)) {
                 foreach ($equipment->images as $imgUrl) {
-                    $path = ltrim(str_replace('/storage/', '', $imgUrl), '/');
-                    if (Storage::disk('public')->exists($path)) {
-                        Storage::disk('public')->delete($path);
-                    }
+                    $this->media->delete($imgUrl);
                 }
             }
             $data['images'] = $imageUrls;
@@ -524,10 +504,7 @@ class EquipmentController extends Controller
         // Delete images from storage
         if (is_array($equipment->images)) {
             foreach ($equipment->images as $imgUrl) {
-                $path = str_replace('/storage/', '', $imgUrl);
-                if (\Storage::disk('public')->exists($path)) {
-                    \Storage::disk('public')->delete($path);
-                }
+                $this->media->delete($imgUrl);
             }
         }
         $equipment->delete();
@@ -549,17 +526,9 @@ class EquipmentController extends Controller
         $equipment = Equipment::where('user_id', $user->id)->get();
         // Normalize image paths for each equipment
         $equipment = $equipment->map(function ($item) {
-            $item->images = collect($item->images ?? [])->map(function($img) {
-                $img = ltrim($img, '/');
-                if (!str_starts_with($img, 'storage/equipment/')) {
-                    if (str_starts_with($img, 'equipment/')) {
-                        $img = 'storage/' . $img;
-                    } else {
-                        $img = 'storage/equipment/' . $img;
-                    }
-                }
-                return $img;
-            })->toArray();
+            $item->images = collect($item->images ?? [])
+                ->map(fn ($img) => $this->media->publicUrl($img, 'equipment'))
+                ->filter()->values()->toArray();
             return $item;
         });
         return response()->json(['data' => $equipment]);

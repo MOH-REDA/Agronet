@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Equipment;
+use App\Services\PublicMediaStorage;
 use Illuminate\Http\Request;
 
 class AdminEquipmentController extends Controller
 {
+    public function __construct(private readonly PublicMediaStorage $media) {}
+
     // GET /api/admin/equipment
     public function index(Request $request)
     {
@@ -45,10 +48,7 @@ class AdminEquipmentController extends Controller
         // Optionally: delete images from storage
         if (is_array($equipment->images)) {
             foreach ($equipment->images as $imgUrl) {
-                $path = str_replace('/storage/', '', $imgUrl);
-                if (\Storage::disk('public')->exists($path)) {
-                    \Storage::disk('public')->delete($path);
-                }
+                $this->media->delete($imgUrl);
             }
         }
         $equipment->delete();

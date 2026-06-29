@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCheck,
   ChevronDown,
+  ChevronRight,
   CircleCheck,
   Heart,
   Inbox,
@@ -324,9 +325,43 @@ const Navbar = () => {
                 {notifOpen && (
                   <div className="notif-dropdown" role="dialog" aria-label={notificationCopy.panel}>
                     <div className="notif-header">
-                      <div>
-                        <h2>{t('nav.notifications')}</h2>
-                        <span>{unreadCount ? `${unreadCount} ${unreadCount === 1 ? notificationCopy.unread : notificationCopy.unreadPlural}` : notificationCopy.caughtUp}</span>
+                      <div className="notif-header-main">
+                        <span className="notif-title-icon"><Bell size={18} aria-hidden="true" /></span>
+                        <div className="notif-header-copy">
+                          <h2>{t('nav.notifications')}</h2>
+                          <span>{unreadCount ? `${unreadCount} ${unreadCount === 1 ? notificationCopy.unread : notificationCopy.unreadPlural}` : notificationCopy.caughtUp}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="notif-close"
+                        onClick={() => setNotifOpen(false)}
+                        aria-label={notificationCopy.close}
+                      >
+                        <X size={18} aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <div className="notif-toolbar">
+                      <div className="notif-filters" role="tablist" aria-label={notificationCopy.filter}>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={notificationFilter === 'all'}
+                          className={notificationFilter === 'all' ? 'active' : ''}
+                          onClick={() => setNotificationFilter('all')}
+                        >
+                          {notificationCopy.all}
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={notificationFilter === 'unread'}
+                          className={notificationFilter === 'unread' ? 'active' : ''}
+                          onClick={() => setNotificationFilter('unread')}
+                        >
+                          {notificationCopy.unreadTab} {unreadCount > 0 && <span>{unreadCount}</span>}
+                        </button>
                       </div>
                       <button
                         type="button"
@@ -335,29 +370,8 @@ const Navbar = () => {
                         disabled={!unreadCount}
                         title={notificationCopy.markAll}
                       >
-                        <CheckCheck size={17} aria-hidden="true" />
+                        <CheckCheck size={15} aria-hidden="true" />
                         {notificationCopy.markAll}
-                      </button>
-                    </div>
-
-                    <div className="notif-filters" role="tablist" aria-label={notificationCopy.filter}>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={notificationFilter === 'all'}
-                        className={notificationFilter === 'all' ? 'active' : ''}
-                        onClick={() => setNotificationFilter('all')}
-                      >
-                        {notificationCopy.all}
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={notificationFilter === 'unread'}
-                        className={notificationFilter === 'unread' ? 'active' : ''}
-                        onClick={() => setNotificationFilter('unread')}
-                      >
-                        {notificationCopy.unreadTab} {unreadCount > 0 && <span>{unreadCount}</span>}
                       </button>
                     </div>
 
@@ -378,28 +392,36 @@ const Navbar = () => {
                               className={`notif-item${n.status === 'unread' ? ' unread' : ''}`}
                               onClick={() => handleNotifClick(n)}
                             >
-                              <span className={`notif-type-icon notif-type-${n.type || 'general'}`}>
-                                <NotificationIcon size={18} aria-hidden="true" />
+                              <span className="notif-icon-wrap">
+                                <span className={`notif-type-icon notif-type-${n.type || 'general'}`}>
+                                  <NotificationIcon size={18} aria-hidden="true" />
+                                </span>
+                                {n.status === 'unread' && <span className="notif-unread-dot" aria-label={notificationCopy.unread} />}
                               </span>
                               <span className="notif-content">
-                                <span className="notif-meta"><strong>{notificationTypeLabel(n.type, language)}</strong>{n.data?.reservation_id && <em>#{n.data.reservation_id}</em>}</span>
+                                <span className="notif-meta">
+                                  <strong>{notificationTypeLabel(n.type, language)}</strong>
+                                  <time title={new Date(n.created_at).toLocaleString(language)}>{formatRelativeTime(n.created_at, language)}</time>
+                                </span>
                                 <span className="notif-message">{localizeNotification(n, language)}</span>
-                                <span className="notif-date" title={new Date(n.created_at).toLocaleString(language)}>{formatRelativeTime(n.created_at, language)}</span>
+                                {n.data?.reservation_id && <span className="notif-reference">#{n.data.reservation_id}</span>}
                               </span>
-                              {n.status === 'unread' && <span className="notif-unread-dot" aria-label="Unread" />}
+                              <ChevronRight className="notif-item-arrow" size={17} aria-hidden="true" />
                             </button>
                           );
                         })
                       ) : (
                         <div className="notif-empty">
-                          <Inbox size={28} aria-hidden="true" />
+                          <span><Inbox size={25} aria-hidden="true" /></span>
                           <strong>{notificationFilter === 'unread' ? notificationCopy.noneUnread : notificationCopy.none}</strong>
+                          <p>{notificationCopy.emptyHint}</p>
                         </div>
                       )}
                     </div>
 
                     <Link className="notif-footer" to="/my-bookings" onClick={() => setNotifOpen(false)}>
-                      {t('nav.bookings')}
+                      <span>{t('nav.bookings')}</span>
+                      <ChevronRight size={16} aria-hidden="true" />
                     </Link>
                   </div>
                 )}
