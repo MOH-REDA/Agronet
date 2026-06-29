@@ -1,9 +1,9 @@
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git libonig-dev libzip-dev unzip \
+    && apt-get install -y --no-install-recommends libonig-dev libzip-dev unzip \
     && docker-php-ext-install bcmath mbstring pdo_mysql zip \
     && a2enmod headers rewrite \
     && sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
